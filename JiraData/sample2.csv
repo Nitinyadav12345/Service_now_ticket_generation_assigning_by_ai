@@ -1,0 +1,14 @@
+Summary,Description,Issue Type,Assignee,Sprint,Story Points
+Develop Notification Service,Backend task for Sprint 2,Task,vinayr@yugensys.com,Sprint 2,5
+Improve API Response Time,Backend task for Sprint 2,Task,vinayr@yugensys.com,Sprint 2,3
+Implement Caching Layer,Backend task for Sprint 2,Task,nityams@yugensys.com,Sprint 2,5
+Create Error Handling Module,Backend task for Sprint 2,Task,nityams@yugensys.com,Sprint 2,3
+Add Backend Integration Tests,Backend task for Sprint 2,Task,vinayr@yugensys.com,Sprint 2,2
+Build Profile Page UI,Frontend task for Sprint 2,Task,shrirams@yugensys.com,Sprint 2,5
+Fix UI Form Validation Issues,Frontend task for Sprint 2,Task,shrirams@yugensys.com,Sprint 2,3
+Update Theme & Styling,Frontend task for Sprint 2,Task,shrirams@yugensys.com,Sprint 2,2
+Develop Reporting Module (Fullstack),Fullstack task for Sprint 2,Task,nehas@yugensys.com,Sprint 2,5
+Integrate Charts Library (Fullstack),Fullstack task for Sprint 2,Task,nehas@yugensys.com,Sprint 2,4
+Improve Frontend Build Pipeline (Fullstack),Fullstack task for Sprint 2,Task,nehas@yugensys.com,Sprint 2,3
+Sprint Retrospective & Analysis,Management task for Sprint 2,Task,nitiny@yugensys.com,Sprint 2,2
+Project Roadmap Update,Management task for Sprint 2,Task,nitiny@yugensys.com,Sprint 2,2

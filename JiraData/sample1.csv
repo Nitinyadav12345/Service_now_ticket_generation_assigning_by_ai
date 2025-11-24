@@ -1,0 +1,15 @@
+Summary,Description,Issue Type,Assignee,Sprint,Story Points
+Implement User Authentication API,Backend task for Sprint 1,Task,vinayr@yugensys.com,Sprint 1,5
+Optimize Database Query Layer,Backend task for Sprint 1,Task,vinayr@yugensys.com,Sprint 1,3
+Create Logging Middleware,Backend task for Sprint 1,Task,nityams@yugensys.com,Sprint 1,5
+Refactor Payment Service,Backend task for Sprint 1,Task,nityams@yugensys.com,Sprint 1,3
+Add Unit Tests for Backend Modules,Backend task for Sprint 1,Task,vinayr@yugensys.com,Sprint 1,2
+Build Dashboard UI Components,Frontend task for Sprint 1,Task,shrirams@yugensys.com,Sprint 1,5
+Fix Layout Issues on Mobile,Frontend task for Sprint 1,Task,shrirams@yugensys.com,Sprint 1,3
+Implement Navbar Animations,Frontend task for Sprint 1,Task,shrirams@yugensys.com,Sprint 1,3
+Create Reusable Button Component,Frontend task for Sprint 1,Task,shrirams@yugensys.com,Sprint 1,2
+Develop Admin Panel (Fullstack),Fullstack task for Sprint 1,Task,nehas@yugensys.com,Sprint 1,5
+Integrate API With Frontend (Fullstack),Fullstack task for Sprint 1,Task,nehas@yugensys.com,Sprint 1,3
+Fix Token Refresh Logic (Fullstack),Fullstack task for Sprint 1,Task,nehas@yugensys.com,Sprint 1,2
+Sprint Planning & Grooming,Management task for Sprint 1,Task,nitiny@yugensys.com,Sprint 1,2
+Documentation & Release Notes,Management task for Sprint 1,Task,nitiny@yugensys.com,Sprint 1,2
