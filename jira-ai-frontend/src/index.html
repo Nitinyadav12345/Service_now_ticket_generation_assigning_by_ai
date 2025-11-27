@@ -2,12 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>JiraAiFrontend</title>
-  <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI-Powered Intelligent Ticket Management System">
+  <title>Jira AI Assistant</title>
+  <base href="/">
+  
+  <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Preload critical assets -->
+  <link rel="preload" href="assets/images/logo.svg" as="image">
 </head>
-<body>
-  <app-root></app-root>
+<body class="mat-typography">
+  <app-root>
+    <!-- Loading state before Angular bootstraps -->
+    <div class="initial-loader">
+      <div class="loader-content">
+        <div class="spinner"></div>
+        <p>Loading Jira AI Assistant...</p>
+      </div>
+    </div>
+  </app-root>
+  
+  <style>
+    .initial-loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #F4F5F7;
+    }
+    
+    .loader-content {
+      text-align: center;
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #E2E8F0;
+      border-top-color: #0052CC;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    .loader-content p {
+      color: #5E6C84;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+  </style>
 </body>
 </html>

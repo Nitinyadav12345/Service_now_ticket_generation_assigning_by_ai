@@ -1,0 +1,144 @@
+.card {
+  background: white;
+  border: 1px solid #DFE1E6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #DFE1E6;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #172B4D;
+    margin: 0;
+
+    i {
+      color: #0052CC;
+    }
+  }
+
+  .view-all {
+    font-size: 13px;
+    color: #0052CC;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.card-body {
+  padding: 0;
+}
+
+.activity-list {
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #EBECF0;
+    transition: background-color 0.2s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: #F4F5F7;
+    }
+
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    &.activity-created .activity-icon {
+      background: #DEEBFF;
+      color: #0052CC;
+    }
+
+    &.activity-completed .activity-icon {
+      background: #E3FCEF;
+      color: #36B37E;
+    }
+
+    &.activity-assignment .activity-icon {
+      background: #EAE6FF;
+      color: #6554C0;
+    }
+
+    &.activity-adjusted .activity-icon {
+      background: #FFF7D6;
+      color: #FF8B00;
+    }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+
+      .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 4px;
+
+        .activity-title {
+          font-weight: 500;
+          color: #172B4D;
+          font-size: 13px;
+        }
+
+        .activity-time {
+          font-size: 11px;
+          color: #97A0AF;
+          white-space: nowrap;
+        }
+      }
+
+      .activity-description {
+        font-size: 12px;
+        color: #5E6C84;
+        margin: 0 0 8px;
+        line-height: 1.4;
+      }
+
+      .activity-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 11px;
+
+        .issue-key, .user {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #5E6C84;
+
+          i {
+            font-size: 10px;
+          }
+        }
+
+        .issue-key {
+          color: #0052CC;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+}

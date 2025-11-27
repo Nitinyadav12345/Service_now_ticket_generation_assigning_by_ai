@@ -1,0 +1,53 @@
+<div class="assignment-chart">
+  <div class="card">
+    <div class="card-header">
+      <h3>Assignment Accuracy</h3>
+      <div class="accuracy-badge" [ngClass]="getAcceptanceClass()">
+        <span class="value">{{ data.acceptanceRate }}%</span>
+        <span class="label">Acceptance Rate</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <h4>Assignments by Member</h4>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="barChartData"
+              [options]="barChartOptions"
+              type="bar">
+            </canvas>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <h4>Assignment Distribution</h4>
+          <div class="chart-container pie">
+            <canvas baseChart
+              [data]="pieChartData"
+              [options]="pieChartOptions"
+              type="pie">
+            </canvas>
+          </div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-value">{{ data.totalAssignments }}</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-item success">
+          <span class="stat-value">{{ data.autoAssigned }}</span>
+          <span class="stat-label">Auto-assigned</span>
+        </div>
+        <div class="stat-item warning">
+          <span class="stat-value">{{ data.reassignments }}</span>
+          <span class="stat-label">Reassigned</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ data.averageAssignmentScore | number:'1.1-1' }}</span>
+          <span class="stat-label">Avg Score</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,291 @@
+<div class="analytics-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Analytics & Insights</h1>
+      <p>AI learning metrics and team performance analytics</p>
+    </div>
+    <div class="header-actions">
+      <select 
+        class="time-range-select"
+        [(ngModel)]="selectedTimeRange"
+        (change)="onTimeRangeChange(selectedTimeRange)">
+        <option *ngFor="let option of timeRangeOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+      <button class="btn btn-secondary" (click)="refreshData()">
+        <i class="fas fa-sync-alt"></i>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner *ngIf="isLoading" message="Loading analytics..."></app-loading-spinner>
+
+  <!-- Content -->
+  <div class="analytics-content" *ngIf="!isLoading">
+    <!-- Quick Stats -->
+    <div class="stats-grid" *ngIf="stats">
+      <app-stats-card
+        title="Estimation Accuracy"
+        [value]="stats.estimationAccuracy"
+        suffix="%"
+        icon="fa-bullseye"
+        color="blue"
+        [trend]="{ value: 5, direction: 'up' }">
+      </app-stats-card>
+
+      <app-stats-card
+        title="Assignment Accuracy"
+        [value]="stats.assignmentAccuracy"
+        suffix="%"
+        icon="fa-user-check"
+        color="green"
+        [trend]="{ value: 3, direction: 'up' }">
+      </app-stats-card>
+
+      <app-stats-card
+        title="Stories Created"
+        [value]="stats.storiesCreated"
+        icon="fa-layer-group"
+        color="purple"
+        [trend]="{ value: 12, direction: 'up' }">
+      </app-stats-card>
+
+      <app-stats-card
+        title="Avg Cycle Time"
+        [value]="stats.averageCycleTime"
+        suffix=" days"
+        icon="fa-clock"
+        color="yellow"
+        [trend]="{ value: 0.5, direction: 'down' }">
+      </app-stats-card>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-navigation">
+      <button 
+        *ngFor="let tab of tabs"
+        class="tab-btn"
+        [class.active]="activeTab === tab.id"
+        (click)="setActiveTab(tab.id)">
+        <i class="fas" [ngClass]="tab.icon"></i>
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Overview Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'overview'">
+        <div class="overview-grid">
+          <!-- Main Charts -->
+          <div class="main-charts">
+            <app-estimation-chart 
+              *ngIf="estimationAccuracy"
+              [data]="estimationAccuracy"
+              [showTrend]="true">
+            </app-estimation-chart>
+
+            <app-assignment-chart
+              *ngIf="assignmentAccuracy"
+              [data]="assignmentAccuracy">
+            </app-assignment-chart>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="sidebar-content">
+            <app-insights-card [insights]="insights"></app-insights-card>
+            <app-recommendations-card [recommendations]="recommendations"></app-recommendations-card>
+          </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <app-activity-feed [activities]="recentActivity"></app-activity-feed>
+      </div>
+
+      <!-- Estimation Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'estimation'">
+        <div class="estimation-details" *ngIf="estimationAccuracy">
+          <div class="detail-grid">
+            <!-- Estimation Summary -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Estimation Summary</h3>
+              </div>
+              <div class="card-body">
+                <div class="summary-stats">
+                  <div class="summary-item">
+                    <span class="summary-value">{{ estimationAccuracy.totalEstimations }}</span>
+                    <span class="summary-label">Total Estimations</span>
+                  </div>
+                  <div class="summary-item success">
+                    <span class="summary-value">{{ estimationAccuracy.accurateEstimations }}</span>
+                    <span class="summary-label">Accurate</span>
+                  </div>
+                  <div class="summary-item warning">
+                    <span class="summary-value">{{ estimationAccuracy.overEstimations }}</span>
+                    <span class="summary-label">Over-estimated</span>
+                  </div>
+                  <div class="summary-item danger">
+                    <span class="summary-value">{{ estimationAccuracy.underEstimations }}</span>
+                    <span class="summary-label">Under-estimated</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accuracy by Complexity -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Accuracy by Complexity</h3>
+              </div>
+              <div class="card-body">
+                <div class="complexity-bars">
+                  <div class="complexity-item" *ngFor="let item of estimationAccuracy.byComplexity">
+                    <div class="complexity-header">
+                      <span class="complexity-label">{{ item.complexity }}</span>
+                      <span class="complexity-value">{{ item.accuracy }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div 
+                        class="progress-fill"
+                        [style.width.%]="item.accuracy"
+                        [class.low]="item.complexity === 'Low'"
+                        [class.medium]="item.complexity === 'Medium'"
+                        [class.high]="item.complexity === 'High'">
+                      </div>
+                    </div>
+                    <span class="complexity-count">{{ item.count }} stories</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trend Chart -->
+            <div class="card full-width">
+              <div class="card-header">
+                <h3>Monthly Accuracy Trend</h3>
+              </div>
+              <div class="card-body">
+                <app-estimation-chart 
+                  [data]="estimationAccuracy"
+                  [showTrend]="true"
+                  [fullWidth]="true">
+                </app-estimation-chart>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assignment Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'assignment'">
+        <div class="assignment-details" *ngIf="assignmentAccuracy">
+          <div class="detail-grid">
+            <!-- Assignment Summary -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Assignment Summary</h3>
+              </div>
+              <div class="card-body">
+                <div class="summary-stats">
+                  <div class="summary-item">
+                    <span class="summary-value">{{ assignmentAccuracy.totalAssignments }}</span>
+                    <span class="summary-label">Total Assignments</span>
+                  </div>
+                  <div class="summary-item success">
+                    <span class="summary-value">{{ assignmentAccuracy.autoAssigned }}</span>
+                    <span class="summary-label">Auto-assigned</span>
+                  </div>
+                  <div class="summary-item warning">
+                    <span class="summary-value">{{ assignmentAccuracy.reassignments }}</span>
+                    <span class="summary-label">Reassigned</span>
+                  </div>
+                  <div class="summary-item">
+                    <span class="summary-value">{{ assignmentAccuracy.averageAssignmentScore | number:'1.1-1' }}</span>
+                    <span class="summary-label">Avg Score</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reassignment Patterns -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Common Reassignment Patterns</h3>
+              </div>
+              <div class="card-body">
+                <div class="reassignment-list">
+                  <div class="reassignment-item" *ngFor="let pattern of assignmentAccuracy.commonReassignmentPatterns">
+                    <div class="reassignment-flow">
+                      <span class="from-user">{{ pattern.fromDisplayName }}</span>
+                      <i class="fas fa-arrow-right"></i>
+                      <span class="to-user">{{ pattern.toDisplayName }}</span>
+                    </div>
+                    <div class="reassignment-details">
+                      <span class="count">{{ pattern.count }} times</span>
+                      <span class="reason" *ngIf="pattern.reason">{{ pattern.reason }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Member Performance -->
+            <div class="card full-width">
+              <div class="card-header">
+                <h3>Assignment by Team Member</h3>
+              </div>
+              <div class="card-body">
+                <div class="member-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Assigned</th>
+                        <th>Completed</th>
+                        <th>Reassigned</th>
+                        <th>Avg Days</th>
+                        <th>Success Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let member of assignmentAccuracy.assignmentsByMember">
+                        <td class="member-cell">
+                          <div class="member-avatar">
+                            {{ member.displayName.charAt(0) }}
+                          </div>
+                          <span>{{ member.displayName }}</span>
+                        </td>
+                        <td>{{ member.totalAssigned }}</td>
+                        <td>{{ member.completed }}</td>
+                        <td>{{ member.reassigned }}</td>
+                        <td>{{ member.averageCompletionDays | number:'1.1-1' }}</td>
+                        <td>
+                          <span class="success-badge" [class.high]="member.successRate >= 80" [class.medium]="member.successRate >= 60 && member.successRate < 80" [class.low]="member.successRate < 60">
+                            {{ member.successRate }}%
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Tab -->
+      <div class="tab-panel" *ngIf="activeTab === 'performance'">
+        <app-performance-charts 
+          *ngIf="performanceMetrics"
+          [metrics]="performanceMetrics">
+        </app-performance-charts>
+      </div>
+    </div>
+  </div>
+</div>

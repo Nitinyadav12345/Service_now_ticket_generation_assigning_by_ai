@@ -1,0 +1,40 @@
+<div class="activity-feed">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fas fa-stream"></i>
+        Recent Activity
+      </h3>
+      <a href="#" class="view-all">View All</a>
+    </div>
+    <div class="card-body">
+      <div class="activity-list">
+        <div 
+          class="activity-item" 
+          *ngFor="let activity of activities"
+          [ngClass]="getActivityClass(activity.type)">
+          <div class="activity-icon">
+            <i class="fas" [ngClass]="getActivityIcon(activity.type)"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-header">
+              <span class="activity-title">{{ activity.title }}</span>
+              <span class="activity-time">{{ activity.timestamp | timeAgo }}</span>
+            </div>
+            <p class="activity-description">{{ activity.description }}</p>
+            <div class="activity-meta">
+              <span class="issue-key" *ngIf="activity.issueKey">
+                <i class="fas fa-ticket-alt"></i>
+                {{ activity.issueKey }}
+              </span>
+              <span class="user" *ngIf="activity.user">
+                <i class="fas fa-user"></i>
+                {{ activity.user }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

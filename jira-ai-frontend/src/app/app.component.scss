@@ -1,0 +1,32 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  transition: var(--transition);
+  
+  &.sidebar-collapsed {
+    .content-area {
+      margin-left: 70px;
+    }
+  }
+}
+
+.content-area {
+  flex: 1;
+  margin-left: 260px;
+  overflow-y: auto;
+  padding: 2rem;
+  transition: margin-left 0.3s ease;
+  
+  @media (max-width: 768px) {
+    margin-left: 0;
+    padding: 1rem;
+  }
+}

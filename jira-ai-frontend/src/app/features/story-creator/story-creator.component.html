@@ -1,0 +1,262 @@
+<div class="story-creator">
+  <!-- Creation Form -->
+  <div class="creator-card" *ngIf="!showResult">
+    <div class="card-header">
+      <div class="header-icon">
+        <i class="fas fa-magic"></i>
+      </div>
+      <div class="header-text">
+        <h1>Create Ticket with AI</h1>
+        <p>Describe your ticket in natural language and let AI do the rest</p>
+      </div>
+    </div>
+
+    <form [formGroup]="storyForm" (ngSubmit)="onSubmit()" class="card-body">
+      <!-- Prompt Input -->
+      <div class="form-section">
+        <label class="form-label">
+          <i class="fas fa-comment-alt"></i>
+          Describe your ticket
+        </label>
+        <textarea 
+          formControlName="prompt"
+          class="form-input prompt-input"
+          placeholder="Example: Create user authentication with email, password, and Google OAuth..."
+          rows="4"
+          [class.error]="promptControl?.invalid && promptControl?.touched">
+        </textarea>
+        <div class="input-help" *ngIf="promptControl?.invalid && promptControl?.touched">
+          <i class="fas fa-exclamation-circle"></i>
+          Please enter at least 10 characters
+        </div>
+        <div class="char-count" *ngIf="promptControl?.value">
+          {{ promptControl?.value.length }} characters
+        </div>
+      </div>
+
+      <!-- Example Prompts -->
+      <div class="examples-section">
+        <label class="section-label">
+          <i class="fas fa-lightbulb"></i>
+          Try an example
+        </label>
+        <div class="examples-list">
+          <button 
+            type="button" 
+            class="example-btn"
+            *ngFor="let example of examplePrompts"
+            (click)="useExample(example)">
+            {{ example }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Configuration Options -->
+      <div class="config-section">
+        <div class="config-row">
+          <div class="form-group">
+            <label class="form-label">Issue Type</label>
+            <select formControlName="issueType" class="form-input">
+              <option *ngFor="let type of issueTypes" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select formControlName="priority" class="form-input">
+              <option *ngFor="let priority of priorities" [value]="priority">{{ priority }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <div class="form-group">
+            <label class="form-label">Project Key (Optional)</label>
+            <input type="text" formControlName="projectKey" class="form-input" placeholder="e.g., PROJ">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Epic Key (Optional)</label>
+            <input type="text" formControlName="epicKey" class="form-input" placeholder="e.g., PROJ-100">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Labels (Optional, comma-separated)</label>
+          <input type="text" formControlName="labels" class="form-input" placeholder="e.g., frontend, urgent, Q1">
+        </div>
+      </div>
+
+      <!-- AI Options -->
+      <div class="ai-options">
+        <label class="section-label">
+          <i class="fas fa-robot"></i>
+          AI Options
+        </label>
+        
+        <div class="options-grid">
+          <label class="checkbox-option">
+            <input type="checkbox" formControlName="autoEstimate">
+            <span class="checkmark"></span>
+            <div class="option-content">
+              <span class="option-title">Auto-estimate story points</span>
+              <span class="option-desc">AI will estimate complexity using historical data</span>
+            </div>
+          </label>
+
+          <label class="checkbox-option">
+            <input type="checkbox" formControlName="autoBreakdown">
+            <span class="checkmark"></span>
+            <div class="option-content">
+              <span class="option-title">Auto-break into subtasks</span>
+              <span class="option-desc">Tickets > 5 points will be split into subtasks</span>
+            </div>
+          </label>
+
+          <label class="checkbox-option">
+            <input type="checkbox" formControlName="autoAssign">
+            <span class="checkmark"></span>
+            <div class="option-content">
+              <span class="option-title">Auto-assign to team member</span>
+              <span class="option-desc">AI will assign based on capacity and skills</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn btn-primary btn-lg"
+          [disabled]="storyForm.invalid || isSubmitting">
+          <ng-container *ngIf="!isSubmitting">
+            <i class="fas fa-magic"></i>
+            Create Ticket
+          </ng-container>
+          <ng-container *ngIf="isSubmitting">
+            <i class="fas fa-spinner fa-spin"></i>
+            Creating...
+          </ng-container>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Processing State -->
+  <div class="processing-card" *ngIf="isSubmitting && !showResult">
+    <div class="processing-content">
+      <div class="processing-animation">
+        <div class="processing-icon">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="processing-rings">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+        </div>
+      </div>
+      <h2>AI is working on your ticket...</h2>
+      <div class="processing-steps">
+        <div class="step completed">
+          <i class="fas fa-check-circle"></i>
+          <span>Analyzing requirements</span>
+        </div>
+        <div class="step active">
+          <i class="fas fa-spinner fa-spin"></i>
+          <span>Generating ticket details</span>
+        </div>
+        <div class="step">
+          <i class="fas fa-circle"></i>
+          <span>Estimating complexity</span>
+        </div>
+        <div class="step">
+          <i class="fas fa-circle"></i>
+          <span>Finding best assignee</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Card -->
+  <div class="result-card" *ngIf="showResult && createdStory">
+    <div class="result-header" [class.success]="createdStory.status === 'completed'" [class.failed]="createdStory.status === 'failed'">
+      <div class="result-icon">
+        <i [class]="createdStory.status === 'completed' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
+      </div>
+      <div class="result-title">
+        <h2 *ngIf="createdStory.status === 'completed'">Ticket Created Successfully!</h2>
+        <h2 *ngIf="createdStory.status === 'failed'">Ticket Creation Failed</h2>
+      </div>
+    </div>
+
+    <!-- Success Content -->
+    <div class="result-content" *ngIf="createdStory.status === 'completed' && createdStory.generatedStory">
+      <div class="story-preview">
+        <div class="story-key">
+          <span class="key-badge">{{ createdStory.jiraIssueKey }}</span>
+          <app-priority-badge [priority]="storyForm.get('priority')?.value"></app-priority-badge>
+        </div>
+
+        <h3 class="story-title">{{ createdStory.generatedStory.title }}</h3>
+        
+        <div class="story-description">
+          <p>{{ createdStory.generatedStory.description }}</p>
+        </div>
+
+        <div class="story-meta">
+          <div class="meta-item">
+            <i class="fas fa-chart-bar"></i>
+            <span class="meta-label">Estimated:</span>
+            <span class="meta-value points">{{ createdStory.generatedStory.estimatedPoints }} points</span>
+          </div>
+        </div>
+
+        <!-- Acceptance Criteria -->
+        <div class="acceptance-criteria">
+          <h4><i class="fas fa-check-square"></i> Acceptance Criteria</h4>
+          <ul>
+            <li *ngFor="let criteria of createdStory.generatedStory.acceptanceCriteria">
+              <i class="fas fa-check"></i>
+              {{ criteria }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Required Skills -->
+        <div class="required-skills" *ngIf="createdStory.generatedStory.requiredSkills?.length">
+          <h4><i class="fas fa-tools"></i> Required Skills</h4>
+          <div class="skills-list">
+            <app-skill-tag 
+              *ngFor="let skill of createdStory.generatedStory.requiredSkills" 
+              [skill]="skill">
+            </app-skill-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Failure Content -->
+    <div class="result-content error-content" *ngIf="createdStory.status === 'failed'">
+      <div class="error-message">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>{{ createdStory.errorMessage || 'An unexpected error occurred while creating the ticket.' }}</p>
+      </div>
+    </div>
+
+    <!-- Result Actions -->
+    <div class="result-actions">
+      <button class="btn btn-secondary" (click)="createAnother()">
+        <i class="fas fa-plus"></i>
+        Create Another
+      </button>
+      <button 
+        class="btn btn-primary" 
+        *ngIf="createdStory.status === 'completed'"
+        (click)="viewInJira()">
+        <i class="fas fa-external-link-alt"></i>
+        View in Jira
+      </button>
+    </div>
+  </div>
+</div>

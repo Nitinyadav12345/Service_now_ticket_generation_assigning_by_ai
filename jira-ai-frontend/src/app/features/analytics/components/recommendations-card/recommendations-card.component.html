@@ -1,0 +1,40 @@
+<div class="recommendations-card">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fas fa-magic"></i>
+        Recommendations
+      </h3>
+    </div>
+    <div class="card-body">
+      <div class="recommendations-list" *ngIf="recommendations.length > 0">
+        <div class="recommendation-item" *ngFor="let rec of recommendations">
+          <div class="rec-icon">
+            <i class="fas" [ngClass]="getTypeIcon(rec.type)"></i>
+          </div>
+          <div class="rec-content">
+            <div class="rec-header">
+              <h4>{{ rec.title }}</h4>
+              <span class="priority-badge" [ngClass]="getPriorityClass(rec.priority)">
+                {{ rec.priority }}
+              </span>
+            </div>
+            <p>{{ rec.message }}</p>
+            <button 
+              class="action-btn" 
+              *ngIf="rec.actionable && rec.action"
+              (click)="onActionClick(rec)">
+              {{ rec.action }}
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="recommendations.length === 0">
+        <i class="fas fa-check-circle"></i>
+        <p>No recommendations at this time</p>
+      </div>
+    </div>
+  </div>
+</div>

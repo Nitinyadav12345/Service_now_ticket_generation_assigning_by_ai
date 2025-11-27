@@ -1,0 +1,16 @@
+<div class="stats-card" [ngClass]="'color-' + color">
+  <div class="card-icon">
+    <i class="fas" [ngClass]="icon"></i>
+  </div>
+  <div class="card-content">
+    <div class="card-value">
+      {{ prefix }}{{ formattedValue }}{{ suffix }}
+    </div>
+    <div class="card-title">{{ title }}</div>
+    <div class="card-trend" *ngIf="trend" [class.positive]="isPositiveTrend" [class.negative]="!isPositiveTrend">
+      <i class="fas" [ngClass]="trendIcon"></i>
+      <span>{{ trend.value }}%</span>
+      <span class="trend-label">vs last period</span>
+    </div>
+  </div>
+</div>

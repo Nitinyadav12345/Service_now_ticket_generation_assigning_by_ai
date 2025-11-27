@@ -1,0 +1,342 @@
+<div class="capacity-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Team Capacity</h1>
+      <p>Monitor team workload and availability</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="refreshCapacity()" [disabled]="isRefreshing">
+        <i class="fas" [class.fa-sync-alt]="!isRefreshing" [class.fa-spinner]="isRefreshing" [class.fa-spin]="isRefreshing"></i>
+        {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <app-loading-spinner *ngIf="isLoading" message="Loading team capacity..."></app-loading-spinner>
+
+  <ng-container *ngIf="!isLoading">
+    <!-- Capacity Overview Cards -->
+    <div class="overview-cards" *ngIf="teamCapacity">
+      <div class="overview-card">
+        <div class="card-icon blue">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="card-content">
+          <span class="card-value">{{ teamCapacity.teamSize }}</span>
+          <span class="card-label">Team Members</span>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="card-icon green">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="card-content">
+          <span class="card-value">{{ teamCapacity.availableMembers }}</span>
+          <span class="card-label">Available</span>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="card-icon">
+          <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="card-content">
+          <span class="card-value">{{ teamCapacity.totalTeamCapacity }} pts</span>
+          <span class="card-label">Total Capacity</span>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="card-icon" [class.yellow]="teamCapacity.utilizationPercentage > 70" [class.red]="teamCapacity.utilizationPercentage > 90">
+          <i class="fas fa-chart-pie"></i>
+        </div>
+        <div class="card-content">
+          <span class="card-value">{{ teamCapacity.utilizationPercentage | number:'1.0-0' }}%</span>
+          <span class="card-label">Utilization</span>
+        </div>
+        <div class="mini-bar">
+          <app-capacity-bar 
+            [current]="teamCapacity.totalUsedCapacity" 
+            [max]="teamCapacity.totalTeamCapacity"
+            [showText]="false">
+          </app-capacity-bar>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Distribution -->
+    <div class="status-distribution">
+      <button 
+        class="status-btn" 
+        [class.active]="filterStatus === 'all'"
+        (click)="filterStatus = 'all'">
+        All ({{ members.length }})
+      </button>
+      <button 
+        class="status-btn available" 
+        [class.active]="filterStatus === 'available'"
+        (click)="filterStatus = 'available'">
+        <span class="status-dot"></span>
+        Available ({{ getStatusCount('available') }})
+      </button>
+      <button 
+        class="status-btn busy" 
+        [class.active]="filterStatus === 'busy'"
+        (click)="filterStatus = 'busy'">
+        <span class="status-dot"></span>
+        Busy ({{ getStatusCount('busy') }})
+      </button>
+      <button 
+        class="status-btn overloaded" 
+        [class.active]="filterStatus === 'overloaded'"
+        (click)="filterStatus = 'overloaded'">
+        <span class="status-dot"></span>
+        Overloaded ({{ getStatusCount('overloaded') }})
+      </button>
+      <button 
+        class="status-btn ooo" 
+        [class.active]="filterStatus === 'ooo'"
+        (click)="filterStatus = 'ooo'">
+        <span class="status-dot"></span>
+        OOO ({{ getStatusCount('ooo') }})
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        [(ngModel)]="searchQuery" 
+        placeholder="Search by name or skill...">
+      <button *ngIf="searchQuery" class="clear-btn" (click)="searchQuery = ''">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Team Members Grid -->
+    <div class="members-grid">
+      <div 
+        class="member-card" 
+        *ngFor="let member of filteredMembers"
+        (click)="openMemberDetail(member)">
+        <div class="member-header">
+          <div class="member-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="member-info">
+            <h3>{{ member.displayName }}</h3>
+            <span class="member-role">{{ member.seniorityLevel }} Developer</span>
+          </div>
+          <app-status-badge [status]="member.availabilityStatus"></app-status-badge>
+        </div>
+
+        <div class="member-capacity">
+          <app-capacity-bar 
+            [current]="member.currentStoryPoints" 
+            [max]="member.maxStoryPoints">
+          </app-capacity-bar>
+        </div>
+
+        <div class="member-stats">
+          <div class="stat">
+            <i class="fas fa-ticket-alt"></i>
+            <span>{{ member.currentTicketCount }} tickets</span>
+          </div>
+          <div class="stat" *ngIf="member.performanceScore">
+            <i class="fas fa-star"></i>
+            <span>{{ member.performanceScore }}/10</span>
+          </div>
+        </div>
+
+        <div class="member-skills">
+          <app-skill-tag 
+            *ngFor="let skill of member.skills.slice(0, 3)" 
+            [skill]="skill">
+          </app-skill-tag>
+          <span class="more-skills" *ngIf="member.skills.length > 3">
+            +{{ member.skills.length - 3 }} more
+          </span>
+        </div>
+
+        <div class="member-actions">
+          <button class="action-btn" (click)="openOOOModal(member); $event.stopPropagation()" title="Mark OOO">
+            <i class="fas fa-calendar-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <app-empty-state
+      *ngIf="filteredMembers.length === 0 && !isLoading"
+      icon="fas fa-users-slash"
+      title="No team members found"
+      description="Try adjusting your filters or search query">
+    </app-empty-state>
+
+    <!-- Assignment Queue Section -->
+    <div class="queue-section" *ngIf="assignmentQueue && assignmentQueue.queuedCount > 0">
+      <div class="section-header">
+        <h2>
+          <i class="fas fa-clock"></i>
+          Assignment Queue
+          <span class="queue-count">{{ assignmentQueue.queuedCount }}</span>
+        </h2>
+        <button class="btn btn-primary btn-sm" (click)="processQueue()">
+          <i class="fas fa-play"></i>
+          Process Queue
+        </button>
+      </div>
+
+      <div class="queue-list">
+        <div class="queue-item" *ngFor="let item of assignmentQueue.items">
+          <div class="queue-item-header">
+            <span class="issue-key">{{ item.issueKey }}</span>
+            <span class="priority-badge" [class]="'priority-' + item.priority.toLowerCase()">
+              {{ item.priority }}
+            </span>
+            <span class="points">{{ item.estimatedPoints }} pts</span>
+          </div>
+          <div class="queue-item-body">
+            <p class="reason">
+              <i class="fas fa-info-circle"></i>
+              {{ item.reason }}
+            </p>
+            <div class="queue-meta">
+              <span><i class="fas fa-clock"></i> Waiting: {{ item.waitingTime }}</span>
+              <span><i class="fas fa-redo"></i> Attempts: {{ item.attempts }}</span>
+            </div>
+          </div>
+          <div class="queue-item-skills">
+            <span class="skills-label">Required:</span>
+            <app-skill-tag *ngFor="let skill of item.requiredSkills" [skill]="skill"></app-skill-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Member Detail Modal -->
+  <div class="modal-overlay" *ngIf="showMemberDetail" (click)="closeMemberDetail()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Team Member Details</h2>
+        <button class="close-btn" (click)="closeMemberDetail()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" *ngIf="selectedMember">
+        <div class="detail-header">
+          <div class="detail-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="detail-info">
+            <h3>{{ selectedMember.displayName }}</h3>
+            <p>{{ selectedMember.email }}</p>
+            <app-status-badge [status]="selectedMember.availabilityStatus"></app-status-badge>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Capacity</h4>
+          <app-capacity-bar 
+            [current]="selectedMember.currentStoryPoints" 
+            [max]="selectedMember.maxStoryPoints">
+          </app-capacity-bar>
+        </div>
+
+        <div class="detail-section">
+          <h4>Statistics</h4>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-value">{{ selectedMember.currentTicketCount }}</span>
+              <span class="stat-label">Active Tickets</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ selectedMember.averageCompletionDays || 'N/A' }}</span>
+              <span class="stat-label">Avg Days/Ticket</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ selectedMember.performanceScore || 'N/A' }}/10</span>
+              <span class="stat-label">Performance</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ selectedMember.qualityScore || 'N/A' }}/10</span>
+              <span class="stat-label">Quality</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Skills</h4>
+          <div class="skills-list">
+            <app-skill-tag *ngFor="let skill of selectedMember.skills" [skill]="skill"></app-skill-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OOO Modal -->
+  <div class="modal-overlay" *ngIf="showOOOModal" (click)="closeOOOModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Mark Out of Office</h2>
+        <button class="close-btn" (click)="closeOOOModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle" *ngIf="selectedMember">
+          Setting OOO for <strong>{{ selectedMember.displayName }}</strong>
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="date" [(ngModel)]="oooForm.startDate" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="date" [(ngModel)]="oooForm.endDate" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <select [(ngModel)]="oooForm.reason" class="form-input">
+            <option value="">Select reason...</option>
+            <option value="Vacation">Vacation</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Conference">Conference</option>
+            <option value="Training">Training</option>
+            <option value="Personal">Personal</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Partial Capacity (0 = fully unavailable)</label>
+          <input 
+            type="range" 
+            [(ngModel)]="oooForm.partialCapacity" 
+            min="0" 
+            max="100" 
+            step="10"
+            class="range-input">
+          <span class="range-value">{{ oooForm.partialCapacity }}%</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeOOOModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitOOO()" [disabled]="!oooForm.endDate || !oooForm.reason">
+          <i class="fas fa-check"></i>
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

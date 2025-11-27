@@ -1,0 +1,61 @@
+<div class="performance-charts">
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">Average Velocity</div>
+      <div class="summary-value">{{ averageVelocity | number:'1.0-1' }} pts</div>
+      <div class="summary-trend" [class.positive]="velocityTrend === 'improving'" [class.negative]="velocityTrend === 'declining'">
+        {{ velocityTrend === 'improving' ? '↑' : '↓' }} {{ velocityTrend }}
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">Avg Cycle Time</div>
+      <div class="summary-value">{{ averageCycleTime | number:'1.1-1' }} days</div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">Total Throughput</div>
+      <div class="summary-value">{{ totalThroughput }} stories</div>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="charts-grid">
+    <!-- Velocity Chart -->
+    <div class="chart-container">
+      <h3 class="chart-title">Sprint Velocity</h3>
+      <div class="chart-wrapper">
+        <canvas baseChart
+          [data]="velocityChartData"
+          [options]="velocityChartOptions"
+          type="bar">
+        </canvas>
+      </div>
+    </div>
+
+    <!-- Cycle Time Chart -->
+    <div class="chart-container">
+      <h3 class="chart-title">Cycle Time Trend</h3>
+      <div class="chart-wrapper">
+        <canvas baseChart
+          [data]="cycleTimeChartData"
+          [options]="cycleTimeChartOptions"
+          type="line">
+        </canvas>
+      </div>
+    </div>
+
+    <!-- Throughput Chart -->
+    <div class="chart-container full-width">
+      <h3 class="chart-title">Weekly Throughput</h3>
+      <div class="chart-wrapper">
+        <canvas baseChart
+          [data]="throughputChartData"
+          [options]="throughputChartOptions"
+          type="line">
+        </canvas>
+      </div>
+    </div>
+  </div>
+</div>

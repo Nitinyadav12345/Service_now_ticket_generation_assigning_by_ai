@@ -1,0 +1,35 @@
+<header class="header">
+  <div class="header-left">
+    <button class="menu-toggle" (click)="onToggleSidebar()">
+      <i class="fas" [class.fa-bars]="isSidebarCollapsed" [class.fa-times]="!isSidebarCollapsed"></i>
+    </button>
+    <div class="logo">
+      <i class="fas fa-robot"></i>
+      <span class="logo-text">Jira AI Assistant</span>
+    </div>
+  </div>
+
+  <div class="header-center">
+    <div class="search-bar">
+      <i class="fas fa-search"></i>
+      <input type="text" placeholder="Search tickets..." />
+    </div>
+  </div>
+
+  <div class="header-right">
+    <button class="header-btn" title="Notifications">
+      <i class="fas fa-bell"></i>
+      <span class="notification-badge">3</span>
+    </button>
+    <button class="header-btn" title="Help">
+      <i class="fas fa-question-circle"></i>
+    </button>
+    <div class="user-menu">
+      <div class="user-avatar">
+        <i class="fas fa-user"></i>
+      </div>
+      <span class="user-name">John Doe</span>
+      <i class="fas fa-chevron-down"></i>
+    </div>
+  </div>
+</header>

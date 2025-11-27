@@ -1,0 +1,53 @@
+<div class="estimation-chart" [class.full-width]="fullWidth">
+  <div class="card">
+    <div class="card-header">
+      <h3>Estimation Accuracy</h3>
+      <div class="accuracy-badge">
+        <span class="value">{{ data.acceptanceRate }}%</span>
+        <span class="label">Current Accuracy</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="charts-container">
+        <div class="chart-wrapper line-chart" *ngIf="showTrend">
+          <h4>Accuracy Trend</h4>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="lineChartData"
+              [options]="lineChartOptions"
+              type="line">
+            </canvas>
+          </div>
+        </div>
+        <div class="chart-wrapper doughnut-chart">
+          <h4>Estimation Distribution</h4>
+          <div class="chart-container">
+            <canvas baseChart
+              [data]="doughnutChartData"
+              [options]="doughnutChartOptions"
+              type="doughnut">
+            </canvas>
+          </div>
+          <div class="chart-center-text">
+            <span class="number">{{ data.totalEstimations }}</span>
+            <span class="text">Total</span>
+          </div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-value">±{{ data.averageError }}</span>
+          <span class="stat-label">Avg Error (points)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ data.accurateEstimations }}</span>
+          <span class="stat-label">Accurate</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ data.monthlyTrend.length }}</span>
+          <span class="stat-label">Months Analyzed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
