@@ -406,8 +406,8 @@ export class MockDataService {
         status: 'completed',
         priority: 'High',
         issueType: 'Story',
-        assignee: { username: 'john.doe', displayName: 'John Doe' },
-        createdAt: new Date(Date.now() - 3600000)
+        assignee: 'john.doe',
+        createdAt: new Date(Date.now() - 3600000).toISOString()
       },
       {
         requestId: '2',
@@ -421,8 +421,8 @@ export class MockDataService {
         status: 'processing',
         priority: 'Medium',
         issueType: 'Story',
-        assignee: { username: 'jane.smith', displayName: 'Jane Smith' },
-        createdAt: new Date(Date.now() - 18000000)
+        assignee: 'jane.smith',
+        createdAt: new Date(Date.now() - 18000000).toISOString()
       },
       {
         requestId: '3',
@@ -436,8 +436,8 @@ export class MockDataService {
         status: 'completed',
         priority: 'High',
         issueType: 'Story',
-        assignee: { username: 'jane.smith', displayName: 'Jane Smith' },
-        createdAt: new Date(Date.now() - 86400000)
+        assignee: 'jane.smith',
+        createdAt: new Date(Date.now() - 86400000).toISOString()
       }
     ];
     return of(stories).pipe(delay(500));

@@ -38,9 +38,11 @@ export class CapacityComponent implements OnInit, OnDestroy {
   
   isLoading = false;
   isRefreshing = false;
+  isSyncing = false;
   selectedMember: TeamMember | null = null;
   showOOOModal = false;
   showMemberDetail = false;
+  showEditModal = false;
   
   filterStatus: string = 'all';
   searchQuery: string = '';
@@ -52,6 +54,18 @@ export class CapacityComponent implements OnInit, OnDestroy {
     reason: '',
     partialCapacity: 0
   };
+
+  // Edit Form
+  editForm = {
+    displayName: '',
+    email: '',
+    designation: '',
+    skills: [] as string[],
+    maxStoryPoints: 20,
+    seniorityLevel: 'Mid'
+  };
+
+  newSkill = '';
 
   private destroy$ = new Subject<void>();
 
@@ -80,7 +94,10 @@ export class CapacityComponent implements OnInit, OnDestroy {
         next: (capacity) => {
           this.teamCapacity = capacity;
         },
-        error: (err) => console.error('Error loading capacity:', err)
+        error: (err) => {
+          console.error('Error loading capacity:', err);
+          this.notificationService.error('Failed to load team capacity');
+        }
       });
 
     // Load team members
@@ -94,8 +111,7 @@ export class CapacityComponent implements OnInit, OnDestroy {
         error: (err) => {
           console.error('Error loading members:', err);
           this.isLoading = false;
-          // Use mock data for demo
-          this.loadMockData();
+          this.notificationService.error('Failed to load team members. Please check backend connection.');
         }
       });
 
@@ -106,135 +122,10 @@ export class CapacityComponent implements OnInit, OnDestroy {
         next: (queue) => {
           this.assignmentQueue = queue;
         },
-        error: (err) => console.error('Error loading queue:', err)
-      });
-  }
-
-  loadMockData(): void {
-    this.teamCapacity = {
-      totalTeamCapacity: 100,
-      totalUsedCapacity: 72,
-      availableCapacity: 28,
-      utilizationPercentage: 72,
-      teamSize: 5,
-      availableMembers: 3,
-      membersByStatus: {
-        available: ['alice.johnson'],
-        busy: ['john.doe', 'jane.smith'],
-        overloaded: ['mike.wilson'],
-        ooo: ['bob.brown']
-      }
-    };
-
-    this.members = [
-      {
-        id: '1',
-        username: 'john.doe',
-        displayName: 'John Doe',
-        email: 'john@example.com',
-        skills: ['Python', 'FastAPI', 'PostgreSQL', 'AWS'],
-        maxStoryPoints: 20,
-        currentStoryPoints: 15,
-        currentTicketCount: 5,
-        availabilityStatus: 'busy',
-        seniorityLevel: 'Senior',
-        performanceScore: 8.5,
-        averageCompletionDays: 3.5,
-        qualityScore: 8.5,
-        isOutOfOffice: false
-      },
-      {
-        id: '2',
-        username: 'jane.smith',
-        displayName: 'Jane Smith',
-        email: 'jane@example.com',
-        skills: ['React', 'TypeScript', 'Tailwind CSS', 'Node.js'],
-        maxStoryPoints: 20,
-        currentStoryPoints: 18,
-        currentTicketCount: 4,
-        availabilityStatus: 'busy',
-        seniorityLevel: 'Mid',
-        performanceScore: 7.8,
-        averageCompletionDays: 4.2,
-        qualityScore: 7.8,
-        isOutOfOffice: false
-      },
-      {
-        id: '3',
-        username: 'bob.brown',
-        displayName: 'Bob Brown',
-        email: 'bob@example.com',
-        skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD'],
-        maxStoryPoints: 20,
-        currentStoryPoints: 0,
-        currentTicketCount: 0,
-        availabilityStatus: 'ooo',
-        seniorityLevel: 'Senior',
-        performanceScore: 9.0,
-        averageCompletionDays: 2.8,
-        qualityScore: 9.0,
-        isOutOfOffice: true,
-        oooEndDate: new Date('2024-12-20')
-      },
-      {
-        id: '4',
-        username: 'alice.johnson',
-        displayName: 'Alice Johnson',
-        email: 'alice@example.com',
-        skills: ['Python', 'React', 'PostgreSQL'],
-        maxStoryPoints: 15,
-        currentStoryPoints: 5,
-        currentTicketCount: 2,
-        availabilityStatus: 'available',
-        seniorityLevel: 'Junior',
-        performanceScore: 7.2,
-        averageCompletionDays: 5.8,
-        qualityScore: 7.2,
-        isOutOfOffice: false
-      },
-      {
-        id: '5',
-        username: 'mike.wilson',
-        displayName: 'Mike Wilson',
-        email: 'mike@example.com',
-        skills: ['Java', 'Spring Boot', 'MySQL', 'Redis'],
-        maxStoryPoints: 20,
-        currentStoryPoints: 22,
-        currentTicketCount: 7,
-        availabilityStatus: 'overloaded',
-        seniorityLevel: 'Senior',
-        performanceScore: 8.0,
-        averageCompletionDays: 3.0,
-        qualityScore: 8.0,
-        isOutOfOffice: false
-      }
-    ];
-
-    this.assignmentQueue = {
-      queuedCount: 2,
-      items: [
-        {
-          issueKey: 'PROJ-125',
-          priority: 'High',
-          estimatedPoints: 8,
-          requiredSkills: ['Python', 'AWS'],
-          attempts: 2,
-          reason: 'All candidates would be overloaded',
-          createdAt: new Date(),
-          waitingTime: '2 hours'
-        },
-        {
-          issueKey: 'PROJ-126',
-          priority: 'Medium',
-          estimatedPoints: 5,
-          requiredSkills: ['React', 'GraphQL'],
-          attempts: 1,
-          reason: 'No team members with required skills available',
-          createdAt: new Date(),
-          waitingTime: '5 hours'
+        error: (err) => {
+          console.error('Error loading queue:', err);
         }
-      ]
-    };
+      });
   }
 
   refreshCapacity(): void {
@@ -250,6 +141,26 @@ export class CapacityComponent implements OnInit, OnDestroy {
         error: () => {
           this.notificationService.error('Failed to refresh capacity');
           this.isRefreshing = false;
+        }
+      });
+  }
+
+  syncFromJira(): void {
+    this.isSyncing = true;
+    this.capacityService.syncFromJira()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.loadData();
+          this.notificationService.success(
+            `Synced ${response.synced_count} team members from Jira successfully`
+          );
+          this.isSyncing = false;
+        },
+        error: (err) => {
+          console.error('Sync error:', err);
+          this.notificationService.error('Failed to sync from Jira. Check your Jira credentials.');
+          this.isSyncing = false;
         }
       });
   }
@@ -335,6 +246,60 @@ export class CapacityComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.notificationService.error('Failed to process queue');
+        }
+      });
+  }
+
+  openEditModal(member: TeamMember): void {
+    this.selectedMember = member;
+    this.editForm = {
+      displayName: member.displayName,
+      email: member.email,
+      designation: member.designation || '',
+      skills: [...member.skills],
+      maxStoryPoints: member.maxStoryPoints,
+      seniorityLevel: member.seniorityLevel
+    };
+    this.newSkill = '';
+    this.showEditModal = true;
+  }
+
+  closeEditModal(): void {
+    this.showEditModal = false;
+    this.selectedMember = null;
+    this.newSkill = '';
+  }
+
+  addSkill(): void {
+    if (this.newSkill.trim() && !this.editForm.skills.includes(this.newSkill.trim())) {
+      this.editForm.skills.push(this.newSkill.trim());
+      this.newSkill = '';
+    }
+  }
+
+  removeSkill(skill: string): void {
+    this.editForm.skills = this.editForm.skills.filter(s => s !== skill);
+  }
+
+  submitEdit(): void {
+    if (!this.selectedMember) return;
+
+    this.capacityService.updateMember(this.selectedMember.username, {
+      displayName: this.editForm.displayName,
+      email: this.editForm.email,
+      designation: this.editForm.designation,
+      skills: this.editForm.skills,
+      maxStoryPoints: this.editForm.maxStoryPoints,
+      seniorityLevel: this.editForm.seniorityLevel
+    }).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.notificationService.success('Team member updated successfully');
+          this.closeEditModal();
+          this.loadData();
+        },
+        error: () => {
+          this.notificationService.error('Failed to update team member');
         }
       });
   }

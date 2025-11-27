@@ -6,6 +6,10 @@
       <p>Monitor team workload and availability</p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-primary" (click)="syncFromJira()" [disabled]="isSyncing">
+        <i class="fas" [class.fa-cloud-download-alt]="!isSyncing" [class.fa-spinner]="isSyncing" [class.fa-spin]="isSyncing"></i>
+        {{ isSyncing ? 'Syncing...' : 'Sync from Jira' }}
+      </button>
       <button class="btn btn-secondary" (click)="refreshCapacity()" [disabled]="isRefreshing">
         <i class="fas" [class.fa-sync-alt]="!isRefreshing" [class.fa-spinner]="isRefreshing" [class.fa-spin]="isRefreshing"></i>
         {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
@@ -129,7 +133,8 @@
           </div>
           <div class="member-info">
             <h3>{{ member.displayName }}</h3>
-            <span class="member-role">{{ member.seniorityLevel }} Developer</span>
+            <span class="member-role" *ngIf="member.designation">{{ member.designation }}</span>
+            <span class="member-role" *ngIf="!member.designation">{{ member.seniorityLevel }} Developer</span>
           </div>
           <app-status-badge [status]="member.availabilityStatus"></app-status-badge>
         </div>
@@ -163,6 +168,9 @@
         </div>
 
         <div class="member-actions">
+          <button class="action-btn" (click)="openEditModal(member); $event.stopPropagation()" title="Edit Member">
+            <i class="fas fa-edit"></i>
+          </button>
           <button class="action-btn" (click)="openOOOModal(member); $event.stopPropagation()" title="Mark OOO">
             <i class="fas fa-calendar-times"></i>
           </button>
@@ -335,6 +343,103 @@
         <button class="btn btn-primary" (click)="submitOOO()" [disabled]="!oooForm.endDate || !oooForm.reason">
           <i class="fas fa-check"></i>
           Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Member Modal -->
+  <div class="modal-overlay" *ngIf="showEditModal" (click)="closeEditModal()">
+    <div class="modal modal-large" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Edit Team Member</h2>
+        <button class="close-btn" (click)="closeEditModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-subtitle" *ngIf="selectedMember">
+          Editing <strong>{{ selectedMember.displayName }}</strong>
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input type="text" [(ngModel)]="editForm.displayName" class="form-input" placeholder="Display Name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" [(ngModel)]="editForm.email" class="form-input" placeholder="user@company.com">
+          <p class="form-hint" *ngIf="editForm.email && editForm.email.includes('@jira.local')">
+            <i class="fas fa-exclamation-triangle"></i>
+            Placeholder email detected. Update with real email if available.
+          </p>
+          <p class="form-hint" *ngIf="!editForm.email || !editForm.email.includes('@jira.local')">
+            <i class="fas fa-info-circle"></i>
+            Email may not be available from Jira due to privacy settings
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Designation / Job Title</label>
+          <input type="text" [(ngModel)]="editForm.designation" class="form-input" placeholder="e.g., Senior Software Engineer, Tech Lead">
+          <p class="form-hint">
+            <i class="fas fa-info-circle"></i>
+            This is synced from Jira but can be manually updated
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Seniority Level</label>
+          <select [(ngModel)]="editForm.seniorityLevel" class="form-input">
+            <option value="Junior">Junior</option>
+            <option value="Mid">Mid</option>
+            <option value="Senior">Senior</option>
+            <option value="Lead">Lead</option>
+            <option value="Principal">Principal</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Max Story Points (Sprint Capacity)</label>
+          <input type="number" [(ngModel)]="editForm.maxStoryPoints" class="form-input" min="5" max="50">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Skills</label>
+          <div class="skills-input-group">
+            <input 
+              type="text" 
+              [(ngModel)]="newSkill" 
+              (keyup.enter)="addSkill()"
+              class="form-input" 
+              placeholder="Add a skill (e.g., Python, React, AWS)">
+            <button class="btn btn-secondary btn-sm" (click)="addSkill()" [disabled]="!newSkill.trim()">
+              <i class="fas fa-plus"></i>
+              Add
+            </button>
+          </div>
+          
+          <div class="skills-list-edit" *ngIf="editForm.skills.length > 0">
+            <div class="skill-tag-edit" *ngFor="let skill of editForm.skills">
+              <span>{{ skill }}</span>
+              <button class="remove-skill-btn" (click)="removeSkill(skill)" title="Remove skill">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          
+          <p class="form-hint" *ngIf="editForm.skills.length === 0">
+            <i class="fas fa-info-circle"></i>
+            No skills added yet. Add skills to help with smart assignment.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitEdit()">
+          <i class="fas fa-save"></i>
+          Save Changes
         </button>
       </div>
     </div>

@@ -31,7 +31,7 @@ export interface QueuedItem {
   requiredSkills: string[];
   attempts: number;
   reason: string;
-  createdAt: Date;
+  createdAt: string | Date;
   waitingTime: string;
 }
 

@@ -1,7 +1,8 @@
 export interface TeamMember {
-  id: string;
+  id: string | number;
   username: string;
   displayName: string;
+  designation?: string;
   email: string;
   avatarUrl?: string;
   skills: string[];
@@ -15,7 +16,7 @@ export interface TeamMember {
   averageCompletionDays?: number;
   qualityScore?: number;
   isOutOfOffice: boolean;
-  oooEndDate?: Date;
+  oooEndDate?: Date | string;
 }
 
 export interface TeamMemberOOO {

@@ -19,12 +19,16 @@ import {
 })
 export class AnalyticsService {
   private readonly endpoint = '/analytics';
-  private useMockData = true; // Set to false when backend is ready
+  private useMockData = !environment.production; // Use mock data in dev if backend not available
 
   constructor(
     private api: ApiService,
     private mockData: MockDataService
   ) {}
+
+  setUseMockData(useMock: boolean): void {
+    this.useMockData = useMock;
+  }
 
   getDashboardStats(): Observable<DashboardStats> {
     if (this.useMockData) {
