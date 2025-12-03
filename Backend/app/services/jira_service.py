@@ -113,13 +113,14 @@ class JiraService:
             raise
     
     def get_user_workload(self, username: str) -> Dict:
-        """Get user's current workload from Jira"""
+        """Get user's current workload from Jira (only active sprint tickets)"""
         if not self.jira:
             return {"story_points": 0, "ticket_count": 0}
         
         try:
-            # Query open issues assigned to user in the project
-            jql = f'assignee = "{username}" AND project = "{self.project_key}" AND status != Done AND status != Closed'
+            # Query open issues assigned to user in the ACTIVE SPRINT only
+            # This excludes backlog items
+            jql = f'assignee = "{username}" AND project = "{self.project_key}" AND status != Done AND status != Closed AND sprint in openSprints()'
             issues = self.jira.search_issues(jql, maxResults=100)
             
             total_points = 0
