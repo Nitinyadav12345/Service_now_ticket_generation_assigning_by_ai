@@ -7,6 +7,7 @@ from app import models, schemas
 from app.services.ai_service import AIService
 from app.services.jira_service import JiraService
 from app.services.assignment_service import AssignmentService
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class StoryService:
             # Step 3: Create ticket in Jira
             logger.info(f"Creating Jira ticket for request {request_id}")
             jira_issue = self.jira_service.create_issue(
-                project_key=request.project_key or "PROJ",
+                project_key=request.project_key or settings.jira_project_key,
                 issue_type=request.issue_type,
                 summary=story_request.generated_title,
                 description=story_request.generated_description,
