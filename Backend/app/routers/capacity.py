@@ -261,14 +261,26 @@ async def sync_team_from_jira(db: Session = Depends(get_db)):
             try:
                 capacity_data = jira_service.calculate_user_capacity(username, sprint_info)
                 
-                member.max_story_points = capacity_data["max_story_points"]
+                # Only set max_story_points for NEW members, preserve manual updates for existing members
+                if member.id is None:  # New member (not yet committed to DB)
+                    member.max_story_points = capacity_data["max_story_points"]
+                
+                # Always update current workload from Jira
                 member.current_story_points = capacity_data["current_story_points"]
                 member.current_ticket_count = capacity_data["current_ticket_count"]
-                member.availability_status = capacity_data["status"]
+                
+                # Recalculate availability status based on their actual max_story_points
+                utilization = (member.current_story_points / member.max_story_points * 100) if member.max_story_points > 0 else 0
+                if utilization >= 100:
+                    member.availability_status = "overloaded"
+                elif utilization >= 75:
+                    member.availability_status = "busy"
+                else:
+                    member.availability_status = "available"
                 
                 logger.info(
-                    f"User {display_name}: {capacity_data['current_story_points']}/{capacity_data['max_story_points']} "
-                    f"points ({capacity_data['utilization_percentage']}% utilized) - {capacity_data['status']}"
+                    f"User {display_name}: {member.current_story_points}/{member.max_story_points} "
+                    f"points ({utilization:.1f}% utilized) - {member.availability_status}"
                 )
             except Exception as e:
                 logger.warning(f"Could not calculate capacity for {username}: {e}")
