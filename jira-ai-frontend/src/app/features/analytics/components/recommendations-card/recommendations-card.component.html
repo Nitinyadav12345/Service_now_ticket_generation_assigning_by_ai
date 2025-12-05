@@ -19,14 +19,11 @@
                 {{ rec.priority }}
               </span>
             </div>
-            <p>{{ rec.message }}</p>
-            <button 
-              class="action-btn" 
-              *ngIf="rec.actionable && rec.action"
-              (click)="onActionClick(rec)">
-              {{ rec.action }}
-              <i class="fas fa-arrow-right"></i>
-            </button>
+            <p>{{ rec.description || rec.message }}</p>
+            <div class="rec-details" *ngIf="rec.action || rec.impact">
+              <span class="action-label" *ngIf="rec.action"><strong>Action:</strong> {{ rec.action }}</span>
+              <span class="impact-label" *ngIf="rec.impact"><strong>Impact:</strong> {{ rec.impact }}</span>
+            </div>
           </div>
         </div>
       </div>

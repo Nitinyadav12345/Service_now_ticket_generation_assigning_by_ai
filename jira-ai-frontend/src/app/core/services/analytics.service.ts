@@ -31,51 +31,30 @@ export class AnalyticsService {
   }
 
   getDashboardStats(): Observable<DashboardStats> {
-    if (this.useMockData) {
-      return this.mockData.getDashboardStats();
-    }
     return this.api.get<DashboardStats>(`${this.endpoint}/dashboard-stats`);
   }
 
   getEstimationAccuracy(): Observable<EstimationAccuracy> {
-    if (this.useMockData) {
-      return this.mockData.getEstimationAccuracy();
-    }
     return this.api.get<EstimationAccuracy>(`${this.endpoint}/estimation-accuracy`);
   }
 
   getAssignmentAccuracy(): Observable<AssignmentAccuracy> {
-    if (this.useMockData) {
-      return this.mockData.getAssignmentAccuracy();
-    }
     return this.api.get<AssignmentAccuracy>(`${this.endpoint}/assignment-accuracy`);
   }
 
-  getLearningInsights(): Observable<LearningInsight[]> {
-    if (this.useMockData) {
-      return this.mockData.getLearningInsights();
-    }
-    return this.api.get<LearningInsight[]>(`${this.endpoint}/insights`);
+  getLearningInsights(): Observable<any> {
+    return this.api.get<any>(`${this.endpoint}/learning-insights`);
   }
 
-  getRecommendations(): Observable<Recommendation[]> {
-    if (this.useMockData) {
-      return this.mockData.getRecommendations();
-    }
-    return this.api.get<Recommendation[]>(`${this.endpoint}/recommendations`);
+  getRecommendations(): Observable<any> {
+    return this.api.get<any>(`${this.endpoint}/recommendations`);
   }
 
   getPerformanceMetrics(): Observable<PerformanceMetrics> {
-    if (this.useMockData) {
-      return this.mockData.getPerformanceMetrics();
-    }
-    return this.api.get<PerformanceMetrics>(`${this.endpoint}/performance`);
+    return this.api.get<PerformanceMetrics>(`${this.endpoint}/performance-metrics`);
   }
 
-  getRecentActivity(): Observable<ActivityItem[]> {
-    if (this.useMockData) {
-      return this.mockData.getRecentActivity();
-    }
-    return this.api.get<ActivityItem[]>(`${this.endpoint}/activity`);
+  getRecentActivity(): Observable<any> {
+    return this.api.get<any>(`${this.endpoint}/recent-activity`);
   }
 }

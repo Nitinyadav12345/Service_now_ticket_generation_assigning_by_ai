@@ -1,0 +1,185 @@
+<div class="settings-container">
+  <div class="settings-header">
+    <h1>Settings</h1>
+    <p class="subtitle">Configure AI models and system preferences</p>
+  </div>
+
+  <div class="settings-content">
+    <!-- AI Model Configuration -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2>AI Model Configuration</h2>
+        <p>Select and configure your preferred AI provider</p>
+      </div>
+
+      <div class="form-group" *ngIf="!loading">
+        <label for="provider">AI Provider</label>
+        <select 
+          id="provider" 
+          [(ngModel)]="selectedProvider" 
+          (change)="onProviderChange()"
+          class="form-control">
+          <option *ngFor="let key of providerKeys" [value]="key">
+            {{ getProviderDisplayName(key) }}
+          </option>
+        </select>
+        <small class="form-text">Choose your AI model provider</small>
+      </div>
+
+      <div class="form-group" *ngIf="availableModels.length > 0">
+        <label for="model">Model</label>
+        <select 
+          id="model" 
+          [(ngModel)]="selectedModel" 
+          class="form-control">
+          <option *ngFor="let model of availableModels" [value]="model.id">
+            {{ model.name }} - {{ model.description }}
+          </option>
+        </select>
+        <small class="form-text">Select the specific model version</small>
+      </div>
+
+      <div class="form-group">
+        <label for="apiKey">
+          API Key
+          <span class="api-key-status" *ngIf="hasApiKey()">
+            ✓ Key configured
+          </span>
+        </label>
+        <input 
+          type="password" 
+          id="apiKey" 
+          [(ngModel)]="apiKey" 
+          class="form-control"
+          [placeholder]="hasApiKey() ? 'Enter new key to update' : 'Enter your API key'">
+        <small class="form-text">
+          Your API key is stored securely. 
+          <span *ngIf="hasApiKey()">Leave empty to keep existing key.</span>
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="temperature">
+          Temperature: {{ temperature }}
+        </label>
+        <input 
+          type="range" 
+          id="temperature" 
+          [(ngModel)]="temperature" 
+          min="0" 
+          max="1" 
+          step="0.1"
+          class="form-range">
+        <small class="form-text">
+          Lower values (0.2-0.5) for focused tasks, higher (0.7-0.9) for creative tasks
+        </small>
+      </div>
+
+      <!-- Test Result -->
+      <div class="alert" *ngIf="testResult" [ngClass]="{
+        'alert-success': testResult.status === 'success',
+        'alert-error': testResult.status === 'error'
+      }">
+        {{ testResult.message }}
+      </div>
+
+      <!-- Save Result -->
+      <div class="alert" *ngIf="saveResult" [ngClass]="{
+        'alert-success': saveResult.status === 'success',
+        'alert-error': saveResult.status === 'error'
+      }">
+        {{ saveResult.message }}
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <button 
+          class="btn btn-secondary" 
+          (click)="testConnection()"
+          [disabled]="testing || loading">
+          <span *ngIf="!testing">Test Connection</span>
+          <span *ngIf="testing">Testing...</span>
+        </button>
+
+        <button 
+          class="btn btn-primary" 
+          (click)="saveSettings()"
+          [disabled]="saving || loading">
+          <span *ngIf="!saving">Save Settings</span>
+          <span *ngIf="saving">Saving...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Current Configuration -->
+    <div class="settings-section" *ngIf="currentSettings">
+      <div class="section-header">
+        <h2>Current Configuration</h2>
+      </div>
+
+      <div class="config-info">
+        <div class="config-item">
+          <span class="config-label">Provider:</span>
+          <span class="config-value">{{ getProviderDisplayName(currentSettings.ai_model?.provider) }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Model:</span>
+          <span class="config-value">{{ currentSettings.ai_model?.model }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">Temperature:</span>
+          <span class="config-value">{{ currentSettings.ai_model?.temperature }}</span>
+        </div>
+        <div class="config-item">
+          <span class="config-label">API Key Status:</span>
+          <span class="config-value" [ngClass]="{
+            'status-active': currentSettings.ai_model?.has_api_key,
+            'status-inactive': !currentSettings.ai_model?.has_api_key
+          }">
+            {{ currentSettings.ai_model?.has_api_key ? 'Configured' : 'Not Set' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Toggles -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h2>Feature Settings</h2>
+        <p>Enable or disable automatic features</p>
+      </div>
+
+      <div class="toggle-group">
+        <div class="toggle-item">
+          <label class="toggle-label">
+            <input type="checkbox" checked disabled>
+            <span class="toggle-text">Auto Estimation</span>
+          </label>
+          <small>Automatically estimate story points using AI</small>
+        </div>
+
+        <div class="toggle-item">
+          <label class="toggle-label">
+            <input type="checkbox" checked disabled>
+            <span class="toggle-text">Auto Breakdown</span>
+          </label>
+          <small>Break down large stories into subtasks</small>
+        </div>
+
+        <div class="toggle-item">
+          <label class="toggle-label">
+            <input type="checkbox" checked disabled>
+            <span class="toggle-text">Auto Assignment</span>
+          </label>
+          <small>Automatically assign tickets to team members</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Loading settings...</p>
+    </div>
+  </div>
+</div>

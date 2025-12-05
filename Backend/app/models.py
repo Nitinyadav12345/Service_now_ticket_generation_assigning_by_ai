@@ -46,6 +46,7 @@ class TeamMember(Base):
     designation = Column(String(255))  # Job title/role from Jira
     skills = Column(JSON)  # List of skills
     max_story_points = Column(Integer, default=20)
+    manual_capacity_override = Column(Boolean, default=False)  # True if capacity manually set
     current_story_points = Column(Integer, default=0)
     current_ticket_count = Column(Integer, default=0)
     availability_status = Column(String(50), default="available")  # available, busy, overloaded, ooo

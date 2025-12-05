@@ -1,8 +1,14 @@
-import openai
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
 import json
+import re
 from app.config import settings
+from app.services.model_registry import (
+    initialize_model_client,
+    get_completion_handler,
+    list_available_models,
+)
+
 # CrewAI is optional - only import if available
 try:
     from app.agents.crew_manager import JiraAICrew
@@ -21,26 +27,138 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Configure OpenAI-compatible client (supports OpenAI, DeepSeek, etc.)
-openai.api_key = settings.openai_api_key
-
-# Support for custom API base URL (for DeepSeek, local models, etc.)
-if hasattr(settings, 'openai_api_base') and settings.openai_api_base:
-    openai.base_url = settings.openai_api_base
-    logger.info(f"Using custom API base: {settings.openai_api_base}")
-
 class AIService:
-    """Service for AI/LLM operations with CrewAI"""
+    """Service for AI/LLM operations with multi-model support via registry"""
     
-    def __init__(self):
-        self.model = settings.openai_model
-        self.embedding_model = settings.openai_embedding_model
-        self.crew_manager = JiraAICrew() if CREWAI_AVAILABLE else None
+    def __init__(self, model_key: str = None):
+        """
+        Initialize AI service with specified model.
+        
+        Args:
+            model_key: Model identifier (openai, deepseek, gemini, grok)
+                      If None, attempts to auto-detect from settings
+        """
         self.vector_service = VectorService() if VECTOR_SERVICE_AVAILABLE else None
+        
+        # Auto-detect model if not specified
+        if not model_key:
+            model_key = self._detect_model_from_settings()
+        
+        self.model_key = model_key
+        self.model_instance = initialize_model_client(model_key)
+        
+        if not self.model_instance:
+            logger.error(f"Failed to initialize model: {model_key}")
+            raise ValueError(f"Could not initialize AI model: {model_key}")
+        
+        self.completion_handler = get_completion_handler(model_key)
+        if not self.completion_handler:
+            raise ValueError(f"No completion handler for model: {model_key}")
+        
+        logger.info(f"Initialized AI service with model: {self.model_instance.get('display_name')}")
+        
+        # Initialize CrewAI with model configuration
+        if CREWAI_AVAILABLE and JiraAICrew:
+            try:
+                import os
+                # Get API key and base URL from environment based on provider
+                api_key = None
+                base_url = None
+                
+                if model_key == "deepseek":
+                    api_key = os.getenv("DEEPSEEK_API_KEY")
+                    base_url = os.getenv("DEEPSEEK_API_BASE_URL", "https://api.deepseek.com/v1")
+                elif model_key == "openai":
+                    api_key = settings.openai_api_key
+                    base_url = settings.openai_api_base
+                elif model_key == "gemini":
+                    api_key = os.getenv("GEMINI_API_KEY")
+                    base_url = None
+                elif model_key == "grok":
+                    api_key = os.getenv("GROK_API_KEY")
+                    base_url = os.getenv("GROK_API_BASE_URL", "https://api.x.ai/v1")
+                
+                if not api_key:
+                    logger.warning(f"No API key found for {model_key}, CrewAI disabled")
+                    self.crew_manager = None
+                else:
+                    # Pass model config to CrewAI
+                    model_config = {
+                        "api_key": api_key,
+                        "base_url": base_url,
+                        "model_name": self.model_instance.get("model_name"),
+                        "temperature": self.model_instance.get("temperature", 0.7),
+                        "provider": model_key
+                    }
+                    self.crew_manager = JiraAICrew(model_config)
+                    logger.info(f"CrewAI initialized successfully with {model_key}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize CrewAI: {e}")
+                self.crew_manager = None
+        else:
+            self.crew_manager = None
+            if not CREWAI_AVAILABLE:
+                logger.info("CrewAI not available - using direct model calls")
     
-    def _is_deepseek_model(self) -> bool:
-        """Check if using DeepSeek model"""
-        return 'deepseek' in self.model.lower()
+    def _detect_model_from_settings(self) -> str:
+        """Auto-detect which model to use based on settings."""
+        import os
+        
+        # Priority order: Check environment variables for API keys
+        # 1. Check for DeepSeek
+        if os.getenv("DEEPSEEK_API_KEY"):
+            logger.info("Auto-detected DeepSeek from DEEPSEEK_API_KEY")
+            return "deepseek"
+        
+        # 2. Check for Grok
+        if os.getenv("GROK_API_KEY"):
+            logger.info("Auto-detected Grok from GROK_API_KEY")
+            return "grok"
+        
+        # 3. Check for Gemini
+        if os.getenv("GEMINI_API_KEY"):
+            logger.info("Auto-detected Gemini from GEMINI_API_KEY")
+            return "gemini"
+        
+        # 4. Check for OpenAI
+        if settings.openai_api_key:
+            logger.info("Auto-detected OpenAI from OPENAI_API_KEY")
+            return "openai"
+        
+        # 5. Check API base URL as fallback
+        if settings.openai_api_base:
+            if 'deepseek' in settings.openai_api_base.lower():
+                logger.info("Auto-detected DeepSeek from API base URL")
+                return "deepseek"
+            if 'x.ai' in settings.openai_api_base.lower():
+                logger.info("Auto-detected Grok from API base URL")
+                return "grok"
+        
+        # Default to OpenAI (will fail if no key, but that's expected)
+        logger.warning("No AI model API key found, defaulting to OpenAI")
+        return "openai"
+    
+    @staticmethod
+    def list_models() -> List[Dict]:
+        """List all available AI models."""
+        return list_available_models()
+    
+    def _call_model(self, messages: List[Dict], **kwargs) -> str:
+        """
+        Call the AI model with messages.
+        
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            **kwargs: Additional parameters (temperature, max_tokens, json_mode, etc.)
+        
+        Returns:
+            Model response as string
+        """
+        try:
+            return self.completion_handler(self.model_instance, messages, **kwargs)
+        except Exception as e:
+            logger.error(f"Error calling model: {e}", exc_info=True)
+            raise
     
     def _extract_json_from_response(self, content: str) -> Dict:
         """Extract JSON from response, handling both pure JSON and markdown-wrapped JSON"""
@@ -49,7 +167,6 @@ class AIService:
             return json.loads(content)
         except json.JSONDecodeError:
             # Try to extract JSON from markdown code blocks
-            import re
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group(1))
@@ -61,7 +178,7 @@ class AIService:
     
     async def generate_story(self, prompt: str) -> Dict:
         """
-        Generate story details from natural language prompt using CrewAI
+        Generate story details from natural language prompt using CrewAI or direct model call
         
         Returns:
             {
@@ -73,15 +190,17 @@ class AIService:
             }
         """
         try:
-            # Use CrewAI if available, otherwise use direct OpenAI call
-            if self.crew_manager:
+            # Try CrewAI first if available
+            if self.crew_manager and CREWAI_AVAILABLE:
                 try:
-                    crew = self.crew_manager.create_story_generation_crew(prompt)
-                    result_text = await self.crew_manager.run_crew(crew)
+                    logger.info("Using CrewAI for story generation")
+                    result = await self.crew_manager.generate_story(prompt)
+                    logger.info(f"CrewAI generated story: {result.get('title', 'N/A')}")
+                    return result
                 except Exception as e:
-                    logger.warning(f"CrewAI failed, using direct OpenAI: {e}")
+                    logger.warning(f"CrewAI failed, falling back to direct model call: {e}")
             
-            # Use direct OpenAI call for structured output
+            # Use model registry for structured output
             system_prompt = """You are a Jira story creation expert. Generate well-structured user stories.
 
 Format the response as JSON with these fields:
@@ -93,24 +212,20 @@ Format the response as JSON with these fields:
 
 Be specific, clear, and actionable."""
 
-            # Check if model supports response_format (OpenAI does, some others don't)
-            completion_params = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Create a user story for: {prompt}"}
-                ],
-                "temperature": 0.7
-            }
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Create a user story for: {prompt}"}
+            ]
             
-            # Only add response_format for models that support it
-            if not self._is_deepseek_model():
-                completion_params["response_format"] = {"type": "json_object"}
-            
-            response = openai.chat.completions.create(**completion_params)
+            # Call model with JSON mode if supported
+            response_text = self._call_model(
+                messages,
+                temperature=0.7,
+                json_mode=self.model_instance.get("supports_json_mode", False)
+            )
             
             # Extract JSON from response (handles both pure JSON and markdown-wrapped)
-            result = self._extract_json_from_response(response.choices[0].message.content)
+            result = self._extract_json_from_response(response_text)
             logger.info(f"Generated story: {result.get('title', 'N/A')}")
             return result
             
@@ -153,7 +268,7 @@ Be specific, clear, and actionable."""
                 except Exception:
                     pass
             
-            # Fallback to direct OpenAI call for structured output
+            # Use model registry for estimation
             context = ""
             if similar_stories:
                 context = "\n\nSimilar stories for reference:\n"
@@ -173,21 +288,18 @@ Respond in JSON format:
 - reasoning: Brief explanation
 - confidence: Float 0-1"""
 
-            completion_params = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Title: {title}\n\nDescription: {description}"}
-                ],
-                "temperature": 0.5
-            }
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Title: {title}\n\nDescription: {description}"}
+            ]
             
-            if not self._is_deepseek_model():
-                completion_params["response_format"] = {"type": "json_object"}
+            response_text = self._call_model(
+                messages,
+                temperature=0.5,
+                json_mode=self.model_instance.get("supports_json_mode", False)
+            )
             
-            response = openai.chat.completions.create(**completion_params)
-            
-            result = self._extract_json_from_response(response.choices[0].message.content)
+            result = self._extract_json_from_response(response_text)
             logger.info(f"Estimated {result.get('points', 'N/A')} points for: {title} (with RAG)")
             return result
             
@@ -219,33 +331,43 @@ Respond in JSON format:
 
 Categories: Frontend, Backend, Testing, Documentation, DevOps
 
-Each subtask should be 1-3 points. Respond in JSON format as an array of objects:
-- title: Brief subtask title
-- description: What needs to be done
-- category: One of the categories above
-- points: 1, 2, or 3"""
+Each subtask should be 1-3 points. Respond in JSON format with a "subtasks" array:
+{{
+  "subtasks": [
+    {{
+      "title": "Brief subtask title",
+      "description": "What needs to be done",
+      "category": "Frontend|Backend|Testing|Documentation|DevOps",
+      "points": 1-3
+    }}
+  ]
+}}"""
 
-            completion_params = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Title: {title}\n\nDescription: {description}"}
-                ],
-                "temperature": 0.7
-            }
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Title: {title}\n\nDescription: {description}"}
+            ]
             
-            if not self._is_deepseek_model():
-                completion_params["response_format"] = {"type": "json_object"}
+            response_text = self._call_model(
+                messages,
+                temperature=0.7,
+                json_mode=self.model_instance.get("supports_json_mode", False)
+            )
             
-            response = openai.chat.completions.create(**completion_params)
-            
-            result = self._extract_json_from_response(response.choices[0].message.content)
+            result = self._extract_json_from_response(response_text)
             subtasks = result.get("subtasks", [])
+            
+            if not subtasks:
+                logger.warning(f"No subtasks in response. Full response: {result}")
+                # If response is directly an array, use it
+                if isinstance(result, list):
+                    subtasks = result
+            
             logger.info(f"Created {len(subtasks)} subtasks for: {title}")
             return subtasks
             
         except Exception as e:
-            logger.error(f"Error breaking down story: {e}")
+            logger.error(f"Error breaking down story: {e}", exc_info=True)
             return []
     
     async def process_chat_message(
@@ -265,19 +387,16 @@ Each subtask should be 1-3 points. Respond in JSON format as an array of objects
                 "session_id": "session-id"
             }
         """
-        # Simplified implementation - can be enhanced with conversation history
         try:
-            response = openai.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a helpful Jira assistant. Help users create stories."},
-                    {"role": "user", "content": message}
-                ],
-                temperature=0.7
-            )
+            messages = [
+                {"role": "system", "content": "You are a helpful Jira assistant. Help users create stories."},
+                {"role": "user", "content": message}
+            ]
+            
+            response_text = self._call_model(messages, temperature=0.7)
             
             return {
-                "response": response.choices[0].message.content,
+                "response": response_text,
                 "suggestions": [],
                 "actions": [],
                 "session_id": session_id or "new-session"

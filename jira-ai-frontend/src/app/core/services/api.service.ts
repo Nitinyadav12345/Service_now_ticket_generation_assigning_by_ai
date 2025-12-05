@@ -26,7 +26,9 @@ export class ApiService {
   // ============= Generic HTTP Methods =============
 
   get<T>(url: string): Observable<T> {
-    return this.http.get<T>(url, {
+    // Prepend apiUrl if not already included
+    const fullUrl = url.startsWith('http') ? url : `${this.apiUrl}${url}`;
+    return this.http.get<T>(fullUrl, {
       headers: this.getHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -34,7 +36,9 @@ export class ApiService {
   }
 
   post<T>(url: string, data: any): Observable<T> {
-    return this.http.post<T>(url, data, {
+    // Prepend apiUrl if not already included
+    const fullUrl = url.startsWith('http') ? url : `${this.apiUrl}${url}`;
+    return this.http.post<T>(fullUrl, data, {
       headers: this.getHeaders()
     }).pipe(
       catchError(this.handleError)

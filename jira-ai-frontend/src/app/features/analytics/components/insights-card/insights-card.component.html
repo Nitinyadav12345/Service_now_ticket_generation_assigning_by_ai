@@ -19,12 +19,12 @@
           <div class="insight-content">
             <div class="insight-header">
               <h4>{{ insight.title }}</h4>
-              <span class="impact-badge" [ngClass]="getImpactBadgeClass(insight.impact)">
-                {{ insight.impact }}
+              <span class="impact-badge" [ngClass]="getInsightClass(insight.type || insight.color)">
+                {{ insight.type || insight.color }}
               </span>
             </div>
-            <p>{{ insight.message }}</p>
-            <span class="insight-category">{{ insight.category }}</span>
+            <p>{{ insight.description || insight.message }}</p>
+            <span class="insight-category" *ngIf="insight.category">{{ insight.category }}</span>
           </div>
         </div>
       </div>

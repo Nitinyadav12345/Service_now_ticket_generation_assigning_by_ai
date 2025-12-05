@@ -71,8 +71,19 @@
 
         <div class="config-row">
           <div class="form-group">
-            <label class="form-label">Project Key (Optional)</label>
-            <input type="text" formControlName="projectKey" class="form-input" placeholder="e.g., PROJ">
+            <label class="form-label">
+              Project Key <span class="required">*</span>
+            </label>
+            <input 
+              type="text" 
+              formControlName="projectKey" 
+              class="form-input" 
+              placeholder="e.g., PROJ"
+              [class.error]="projectKeyControl?.invalid && projectKeyControl?.touched">
+            <div class="input-help error" *ngIf="projectKeyControl?.invalid && projectKeyControl?.touched">
+              <i class="fas fa-exclamation-circle"></i>
+              Project Key is required
+            </div>
           </div>
 
           <div class="form-group">

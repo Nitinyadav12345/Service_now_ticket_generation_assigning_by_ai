@@ -10,16 +10,86 @@ class JiraService:
     
     def __init__(self):
         try:
+            # Initialize Jira client with API v3 (Cloud)
             self.jira = JIRA(
                 server=settings.jira_url,
-                basic_auth=(settings.jira_email, settings.jira_api_token)
+                basic_auth=(settings.jira_email, settings.jira_api_token),
+                options={'rest_api_version': '3'}  # Force API v3
             )
             self.project_key = settings.jira_project_key
-            logger.info("Jira client initialized successfully")
+            logger.info("Jira client initialized successfully with API v3")
         except Exception as e:
             logger.error(f"Failed to initialize Jira client: {e}")
             self.jira = None
             self.project_key = settings.jira_project_key
+    
+    @staticmethod
+    def convert_to_adf(text: str) -> Dict:
+        """
+        Convert plain text to Atlassian Document Format (ADF).
+        
+        Args:
+            text: Plain text description
+            
+        Returns:
+            ADF formatted document
+        """
+        if not text:
+            return {
+                "version": 1,
+                "type": "doc",
+                "content": []
+            }
+        
+        # Split text into paragraphs
+        paragraphs = text.split('\n\n')
+        content = []
+        
+        for para in paragraphs:
+            if not para.strip():
+                continue
+            
+            # Check if it's a list item
+            lines = para.split('\n')
+            if any(line.strip().startswith(('-', '*', '•')) for line in lines):
+                # Create bullet list
+                list_items = []
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith(('-', '*', '•')):
+                        # Remove bullet and trim
+                        item_text = line[1:].strip()
+                        list_items.append({
+                            "type": "listItem",
+                            "content": [{
+                                "type": "paragraph",
+                                "content": [{
+                                    "type": "text",
+                                    "text": item_text
+                                }]
+                            }]
+                        })
+                
+                if list_items:
+                    content.append({
+                        "type": "bulletList",
+                        "content": list_items
+                    })
+            else:
+                # Regular paragraph
+                content.append({
+                    "type": "paragraph",
+                    "content": [{
+                        "type": "text",
+                        "text": para.strip()
+                    }]
+                })
+        
+        return {
+            "version": 1,
+            "type": "doc",
+            "content": content
+        }
     
     def create_issue(
         self,
@@ -37,10 +107,13 @@ class JiraService:
             raise Exception("Jira client not initialized")
         
         try:
+            # Convert description to Atlassian Document Format (ADF) for API v3
+            description_adf = self.convert_to_adf(description)
+            
             issue_dict = {
                 'project': {'key': project_key},
                 'summary': summary,
-                'description': description,
+                'description': description_adf,  # Use ADF format
                 'issuetype': {'name': issue_type},
                 'priority': {'name': priority}
             }
@@ -66,6 +139,36 @@ class JiraService:
             logger.error(f"Error creating Jira issue: {e}")
             raise
     
+    def get_subtask_issue_type(self, project_key: str) -> str:
+        """Get the correct subtask issue type name for the project"""
+        if not self.jira:
+            raise Exception("Jira client not initialized")
+        
+        try:
+            # Get project metadata
+            project = self.jira.project(project_key)
+            issue_types = self.jira.issue_types()
+            
+            # Look for subtask issue type (case-insensitive)
+            for issue_type in issue_types:
+                if issue_type.subtask:
+                    logger.info(f"Found subtask issue type: {issue_type.name}")
+                    return issue_type.name
+            
+            # Fallback to common names
+            for name in ['Subtask', 'Sub-task', 'Sub task']:
+                for issue_type in issue_types:
+                    if issue_type.name.lower() == name.lower():
+                        return issue_type.name
+            
+            # Default fallback
+            logger.warning("Could not find subtask issue type, using 'Subtask'")
+            return "Subtask"
+            
+        except Exception as e:
+            logger.warning(f"Error getting subtask issue type: {e}, using default")
+            return "Subtask"
+    
     def create_subtask(
         self,
         parent_key: str,
@@ -80,11 +183,17 @@ class JiraService:
         try:
             parent_issue = self.jira.issue(parent_key)
             
+            # Get correct subtask issue type name
+            subtask_type = self.get_subtask_issue_type(parent_issue.fields.project.key)
+            
+            # Convert description to ADF format
+            description_adf = self.convert_to_adf(description)
+            
             subtask_dict = {
                 'project': {'key': parent_issue.fields.project.key},
                 'summary': summary,
-                'description': description,
-                'issuetype': {'name': 'Sub-task'},
+                'description': description_adf,  # Use ADF format
+                'issuetype': {'name': subtask_type},  # Use detected type
                 'parent': {'key': parent_key}
             }
             
@@ -100,37 +209,108 @@ class JiraService:
             raise
     
     def assign_issue(self, issue_key: str, assignee: str):
-        """Assign issue to user"""
+        """Assign issue to user using account ID"""
         if not self.jira:
             raise Exception("Jira client not initialized")
         
         try:
             issue = self.jira.issue(issue_key)
+            
+            # Log before assignment
+            logger.info(f"Attempting to assign {issue_key} to {assignee}")
+            
+            # Jira Cloud uses account IDs for assignment
+            # The assignee parameter should be the account ID (e.g., "712020:xxx")
             self.jira.assign_issue(issue, assignee)
-            logger.info(f"Assigned {issue_key} to {assignee}")
+            
+            # Verify assignment
+            issue = self.jira.issue(issue_key)
+            actual_assignee = issue.fields.assignee
+            if actual_assignee:
+                logger.info(f"Successfully assigned {issue_key} to {actual_assignee.displayName} ({actual_assignee.accountId})")
+            else:
+                logger.warning(f"Assignment completed but issue {issue_key} has no assignee")
+                
         except Exception as e:
-            logger.error(f"Error assigning issue: {e}")
-            raise
+            logger.error(f"Error assigning issue {issue_key} to {assignee}: {e}")
+            # Don't raise - assignment failure shouldn't fail the whole story creation
+            logger.warning(f"Continuing without assignment for {issue_key}")
     
-    def get_user_workload(self, username: str) -> Dict:
-        """Get user's current workload from Jira"""
+    def get_user_workload(self, username: str, sprint_id: Optional[int] = None) -> Dict:
+        """Get user's current workload from Jira (active sprint only, excluding Done)"""
         if not self.jira:
             return {"story_points": 0, "ticket_count": 0}
         
         try:
-            # Query open issues assigned to user in the project
-            jql = f'assignee = "{username}" AND project = "{self.project_key}" AND status != Done AND status != Closed'
-            issues = self.jira.search_issues(jql, maxResults=100)
+            # For Jira Cloud, username is actually accountId
+            # JQL format: assignee = accountId (no quotes for accountId)
+            # For Jira Server, use quoted username
+            
+            # Detect if it's an accountId (starts with numbers like "712020:")
+            is_account_id = username and ':' in username and username.split(':')[0].isdigit()
+            
+            if is_account_id:
+                assignee_clause = f'assignee = {username}'
+            else:
+                assignee_clause = f'assignee = "{username}"'
+            
+            # Build JQL query for active sprint issues only
+            if sprint_id:
+                # Query issues in specific sprint, excluding Done/Closed
+                jql = (
+                    f'{assignee_clause} '
+                    f'AND project = "{self.project_key}" '
+                    f'AND sprint = {sprint_id} '
+                    f'AND status NOT IN (Done, Closed, Resolved, Cancelled)'
+                )
+            else:
+                # Fallback: Query open issues in current sprint
+                jql = (
+                    f'{assignee_clause} '
+                    f'AND project = "{self.project_key}" '
+                    f'AND sprint in openSprints() '
+                    f'AND status NOT IN (Done, Closed, Resolved, Cancelled)'
+                )
+            
+            logger.debug(f"Workload JQL for {username}: {jql}")
+            
+            # Use JQL API directly (new endpoint required by Atlassian)
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            url = f"{settings.jira_url}/rest/api/3/search/jql"
+            auth = HTTPBasicAuth(settings.jira_email, settings.jira_api_token)
+            headers = {"Accept": "application/json"}
+            params = {
+                "jql": jql,
+                "maxResults": 100,
+                "fields": "customfield_10016,customfield_10002,customfield_10026"  # Story points fields
+            }
+            
+            response = requests.get(url, headers=headers, params=params, auth=auth)
+            response.raise_for_status()
+            data = response.json()
+            issues = data.get("issues", [])
             
             total_points = 0
             for issue in issues:
-                # Get story points (custom field)
-                points = getattr(issue.fields, 'customfield_10016', None)
+                # Get story points from fields (try multiple common field IDs)
+                fields = issue.get("fields", {})
+                points = (
+                    fields.get('customfield_10016') or
+                    fields.get('customfield_10002') or
+                    fields.get('customfield_10026')
+                )
                 if points:
-                    total_points += points
+                    total_points += float(points)
+            
+            logger.info(
+                f"Workload for {username}: {len(issues)} tickets, "
+                f"{total_points} story points (active sprint only)"
+            )
             
             return {
-                "story_points": total_points,
+                "story_points": int(total_points),
                 "ticket_count": len(issues)
             }
         except Exception as e:
@@ -323,13 +503,22 @@ class JiraService:
             logger.warning(f"Could not calculate velocity for {username}: {e}")
             return 2.0
     
-    def calculate_user_capacity(self, username: str, sprint_info: Optional[Dict] = None) -> Dict:
+    def calculate_user_capacity(
+        self, 
+        username: str, 
+        sprint_info: Optional[Dict] = None,
+        seniority_level: str = "Mid"
+    ) -> Dict:
         """
         Calculate user's capacity using proper sprint capacity formula:
-        Sprint Capacity = (Working Days × Daily Working Hours − Leave Hours) × Focus Factor
+        Sprint Capacity = (Working Days × Daily Working Hours − Leave Hours) × Focus Factor × Seniority Multiplier
         
-        Simplified for story points:
-        Sprint Capacity = Working Days × Daily Capacity × Focus Factor
+        Seniority multipliers account for different productivity and responsibilities:
+        - Junior: 60% (learning, needs guidance)
+        - Mid: 100% (baseline)
+        - Senior: 120% (more efficient)
+        - Lead: 80% (more meetings, mentoring)
+        - Principal: 70% (architecture, strategy, mentoring)
         """
         if not self.jira:
             return {
@@ -341,8 +530,9 @@ class JiraService:
             }
         
         try:
-            # Get current workload
-            workload = self.get_user_workload(username)
+            # Get current workload from active sprint only
+            sprint_id = sprint_info.get("id") if sprint_info else None
+            workload = self.get_user_workload(username, sprint_id)
             current_points = workload["story_points"]
             ticket_count = workload["ticket_count"]
             
@@ -355,6 +545,16 @@ class JiraService:
                 HOURS_PER_STORY_POINT = settings.hours_per_story_point
                 FOCUS_FACTOR = settings.focus_factor
                 
+                # Get seniority multiplier
+                seniority_multipliers = {
+                    "Junior": settings.capacity_multiplier_junior,
+                    "Mid": settings.capacity_multiplier_mid,
+                    "Senior": settings.capacity_multiplier_senior,
+                    "Lead": settings.capacity_multiplier_lead,
+                    "Principal": settings.capacity_multiplier_principal
+                }
+                seniority_multiplier = seniority_multipliers.get(seniority_level, 1.0)
+                
                 # Calculate working days (exclude weekends)
                 working_days = (total_days / 7) * 5
                 
@@ -362,8 +562,9 @@ class JiraService:
                 leave_hours = 0  # TODO: Can be enhanced to check OOO records
                 
                 # Sprint Capacity Formula:
-                # (Working Days × Daily Working Hours − Leave Hours) × Focus Factor
-                total_available_hours = (working_days * DAILY_WORKING_HOURS - leave_hours) * FOCUS_FACTOR
+                # (Working Days × Daily Working Hours − Leave Hours) × Focus Factor × Seniority Multiplier
+                base_hours = (working_days * DAILY_WORKING_HOURS - leave_hours) * FOCUS_FACTOR
+                total_available_hours = base_hours * seniority_multiplier
                 
                 # Convert hours to story points
                 max_capacity = round(total_available_hours / HOURS_PER_STORY_POINT)
@@ -372,9 +573,10 @@ class JiraService:
                 max_capacity = max(5, max_capacity)
                 
                 logger.info(
-                    f"Capacity calculation for {username}: "
+                    f"Capacity calculation for {username} ({seniority_level}): "
                     f"{total_days} total days, {working_days:.1f} working days, "
-                    f"{total_available_hours:.1f} available hours (focus factor: {FOCUS_FACTOR}), "
+                    f"{base_hours:.1f} base hours × {seniority_multiplier} multiplier = "
+                    f"{total_available_hours:.1f} available hours, "
                     f"= {max_capacity} story points"
                 )
             else:

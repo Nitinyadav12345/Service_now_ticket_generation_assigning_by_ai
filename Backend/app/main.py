@@ -3,18 +3,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import logging
+import time
 
 from app.config import settings
 from app.database import engine, get_db
 from app import models, schemas
-from app.routers import prompt, capacity, assignment, analytics, webhook
+from app.routers import prompt, capacity, assignment, analytics, webhook, settings as settings_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# Create database tables with retry logic
+def init_db(max_retries=5, retry_delay=2):
+    """Initialize database with retry logic for container startup"""
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempting to connect to database (attempt {attempt + 1}/{max_retries})...")
+            models.Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully")
+            return
+        except Exception as e:
+            logger.warning(f"Database connection failed: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("Failed to connect to database after all retries")
+                raise
+
+init_db()
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -41,6 +59,7 @@ app.include_router(capacity.router, prefix="/api/capacity", tags=["Capacity"])
 app.include_router(assignment.router, prefix="/api/assignment", tags=["Assignment"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(webhook.router, prefix="/api/webhook", tags=["Webhooks"])
+app.include_router(settings_router.router, prefix="/api/settings", tags=["Settings"])
 
 @app.get("/")
 def read_root():

@@ -100,28 +100,40 @@ async def mark_out_of_office(
 
 @router.post("/refresh")
 async def refresh_capacity(db: Session = Depends(get_db)):
-    """Refresh capacity from Jira"""
+    """Refresh capacity from Jira (active sprint only, excluding Done)"""
     try:
         jira_service = JiraService()
+        
+        # Get active sprint info
+        sprint_info = jira_service.get_active_sprint()
+        sprint_id = sprint_info.get("id") if sprint_info else None
+        
         members = db.query(models.TeamMember).all()
         
         for member in members:
-            workload = jira_service.get_user_workload(member.username)
+            # Get workload from active sprint only
+            workload = jira_service.get_user_workload(member.username, sprint_id)
             member.current_story_points = workload["story_points"]
             member.current_ticket_count = workload["ticket_count"]
             
             # Update availability status
-            utilization = (member.current_story_points / member.max_story_points) * 100
-            if utilization >= 100:
-                member.availability_status = "overloaded"
-            elif utilization >= 75:
-                member.availability_status = "busy"
-            else:
-                member.availability_status = "available"
+            if member.max_story_points > 0:
+                utilization = (member.current_story_points / member.max_story_points) * 100
+                if utilization >= 100:
+                    member.availability_status = "overloaded"
+                elif utilization >= 75:
+                    member.availability_status = "busy"
+                else:
+                    member.availability_status = "available"
         
         db.commit()
         
-        return {"status": "success", "message": "Capacity refreshed from Jira"}
+        sprint_msg = f" (Sprint: {sprint_info['name']})" if sprint_info else ""
+        return {
+            "status": "success", 
+            "message": f"Capacity refreshed from Jira{sprint_msg}",
+            "sprint_info": sprint_info
+        }
         
     except Exception as e:
         logger.error(f"Error refreshing capacity: {e}")
@@ -154,9 +166,26 @@ async def update_member(
         if request.skills is not None:
             member.skills = request.skills
         
-        if request.max_story_points is not None:
+        if request.reset_capacity_to_auto:
+            # Reset to auto-calculated capacity
+            member.manual_capacity_override = False
+            # Recalculate capacity
+            jira_service = JiraService()
+            sprint_info = jira_service.get_active_sprint()
+            capacity_data = jira_service.calculate_user_capacity(
+                member.username,
+                sprint_info,
+                member.seniority_level
+            )
+            member.max_story_points = capacity_data["max_story_points"]
+            logger.info(f"Reset {member.username} capacity to auto-calculated: {member.max_story_points}")
+        elif request.max_story_points is not None:
             member.max_story_points = request.max_story_points
-            # Recalculate availability status
+            member.manual_capacity_override = True  # Mark as manually set
+            logger.info(f"Set {member.username} capacity to manual override: {member.max_story_points}")
+        
+        # Recalculate availability status if capacity changed
+        if request.max_story_points is not None or request.reset_capacity_to_auto:
             utilization = (member.current_story_points / member.max_story_points) * 100
             if utilization >= 100:
                 member.availability_status = "overloaded"
@@ -167,6 +196,17 @@ async def update_member(
         
         if request.seniority_level is not None:
             member.seniority_level = request.seniority_level
+            # If seniority changes and capacity is auto, recalculate
+            if not member.manual_capacity_override:
+                jira_service = JiraService()
+                sprint_info = jira_service.get_active_sprint()
+                capacity_data = jira_service.calculate_user_capacity(
+                    member.username,
+                    sprint_info,
+                    member.seniority_level
+                )
+                member.max_story_points = capacity_data["max_story_points"]
+                logger.info(f"Recalculated {member.username} capacity due to seniority change: {member.max_story_points}")
         
         if request.display_name is not None:
             member.display_name = request.display_name
@@ -257,18 +297,39 @@ async def sync_team_from_jira(db: Session = Depends(get_db)):
                 if designation:
                     member.designation = designation
             
-            # Calculate capacity based on sprint and current workload
+            # Calculate capacity based on sprint, seniority, and current workload
             try:
-                capacity_data = jira_service.calculate_user_capacity(username, sprint_info)
+                capacity_data = jira_service.calculate_user_capacity(
+                    username, 
+                    sprint_info,
+                    member.seniority_level
+                )
                 
-                member.max_story_points = capacity_data["max_story_points"]
+                # Only update max_story_points if not manually overridden
+                if not member.manual_capacity_override:
+                    member.max_story_points = capacity_data["max_story_points"]
+                
+                # Always update current workload and status
                 member.current_story_points = capacity_data["current_story_points"]
                 member.current_ticket_count = capacity_data["current_ticket_count"]
-                member.availability_status = capacity_data["status"]
                 
+                # Recalculate status based on current capacity (manual or calculated)
+                if member.max_story_points > 0:
+                    utilization = (member.current_story_points / member.max_story_points) * 100
+                    if utilization >= 100:
+                        member.availability_status = "overloaded"
+                    elif utilization >= 75:
+                        member.availability_status = "busy"
+                    else:
+                        member.availability_status = "available"
+                else:
+                    member.availability_status = capacity_data["status"]
+                
+                override_note = " (manual override)" if member.manual_capacity_override else ""
                 logger.info(
-                    f"User {display_name}: {capacity_data['current_story_points']}/{capacity_data['max_story_points']} "
-                    f"points ({capacity_data['utilization_percentage']}% utilized) - {capacity_data['status']}"
+                    f"User {display_name}: {capacity_data['current_story_points']}/{member.max_story_points} "
+                    f"points ({(member.current_story_points / member.max_story_points * 100):.1f}% utilized) "
+                    f"- {member.availability_status}{override_note}"
                 )
             except Exception as e:
                 logger.warning(f"Could not calculate capacity for {username}: {e}")

@@ -79,7 +79,7 @@ class StoryService:
             # Step 3: Create ticket in Jira
             logger.info(f"Creating Jira ticket for request {request_id}")
             jira_issue = self.jira_service.create_issue(
-                project_key=request.project_key or "PROJ",
+                project_key=request.project_key,
                 issue_type=request.issue_type,
                 summary=story_request.generated_title,
                 description=story_request.generated_description,
@@ -95,21 +95,41 @@ class StoryService:
             # Step 4: Break down into subtasks (if enabled and points > 5)
             subtasks = []
             if request.auto_breakdown and story_request.estimated_points and story_request.estimated_points > 5:
-                logger.info(f"Breaking down story {jira_issue.key} into subtasks")
-                subtasks = await self.ai_service.breakdown_story(
-                    generated_story["title"],
-                    generated_story["description"],
-                    story_request.estimated_points
-                )
-                
-                # Create subtasks in Jira
-                for subtask in subtasks:
-                    self.jira_service.create_subtask(
-                        parent_key=jira_issue.key,
-                        summary=subtask["title"],
-                        description=subtask.get("description", ""),
-                        story_points=subtask.get("points")
+                logger.info(f"Breaking down story {jira_issue.key} into subtasks (estimated points: {story_request.estimated_points})")
+                try:
+                    subtasks = await self.ai_service.breakdown_story(
+                        generated_story["title"],
+                        generated_story["description"],
+                        story_request.estimated_points
                     )
+                    
+                    logger.info(f"AI generated {len(subtasks)} subtasks")
+                    
+                    # Create subtasks in Jira
+                    for idx, subtask in enumerate(subtasks, 1):
+                        try:
+                            logger.info(f"Creating subtask {idx}/{len(subtasks)}: {subtask.get('title', 'N/A')}")
+                            self.jira_service.create_subtask(
+                                parent_key=jira_issue.key,
+                                summary=subtask["title"],
+                                description=subtask.get("description", ""),
+                                story_points=subtask.get("points")
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to create subtask {idx}: {e}")
+                            # Continue with other subtasks
+                    
+                    logger.info(f"Successfully created {len(subtasks)} subtasks for {jira_issue.key}")
+                except Exception as e:
+                    logger.error(f"Error during story breakdown: {e}", exc_info=True)
+                    # Continue with assignment even if breakdown fails
+            else:
+                if not request.auto_breakdown:
+                    logger.info(f"Auto-breakdown disabled for {jira_issue.key}")
+                elif not story_request.estimated_points:
+                    logger.info(f"No story points estimated for {jira_issue.key}, skipping breakdown")
+                elif story_request.estimated_points <= 5:
+                    logger.info(f"Story points ({story_request.estimated_points}) <= 5 for {jira_issue.key}, skipping breakdown")
             
             # Step 5: Assign to team member (if enabled)
             if request.auto_assign:
@@ -122,10 +142,23 @@ class StoryService:
                 )
                 
                 if assignment:
-                    story_request.assigned_to = assignment["assigned_to"]
-                    # Update assignee in Jira
-                    self.jira_service.assign_issue(jira_issue.key, assignment["assigned_to"])
+                    assignee_username = assignment["assigned_to"]
+                    assignee_display = assignment.get("display_name", assignee_username)
+                    
+                    logger.info(f"Assignment service selected: {assignee_display} ({assignee_username})")
+                    story_request.assigned_to = assignee_username
+                    
+                    # Update assignee in Jira using account ID
+                    try:
+                        self.jira_service.assign_issue(jira_issue.key, assignee_username)
+                        logger.info(f"Successfully assigned {jira_issue.key} to {assignee_display}")
+                    except Exception as e:
+                        logger.error(f"Failed to assign in Jira: {e}")
+                        # Continue even if assignment fails
+                    
                     self.db.commit()
+                else:
+                    logger.warning(f"No suitable assignee found for {jira_issue.key}, added to queue")
             
             # Mark as completed
             story_request.status = "completed"

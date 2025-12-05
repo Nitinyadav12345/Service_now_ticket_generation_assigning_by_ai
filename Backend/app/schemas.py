@@ -7,15 +7,28 @@ from uuid import UUID
 
 class StoryCreateRequest(BaseModel):
     """Request to create a story/ticket"""
-    prompt: str = Field(..., min_length=10, description="Natural language description")
+    prompt: str = Field(..., min_length=10, max_length=2000, description="Natural language description")
+    project_key: str = Field(..., min_length=1, max_length=50, description="Jira project key (required)")
     issue_type: str = Field(default="Story", description="Story, Task, or Bug")
-    priority: str = Field(default="Medium", description="Highest, High, Medium, Low")
-    project_key: Optional[str] = None
-    epic_key: Optional[str] = None
-    labels: Optional[List[str]] = None
+    priority: str = Field(default="Medium", description="Highest, High, Medium, or Low")
+    epic_key: Optional[str] = Field(None, max_length=50, description="Epic key to link to")
+    labels: Optional[List[str]] = Field(None, description="Labels to add to ticket")
     auto_breakdown: bool = Field(default=True, description="Auto-break into subtasks if > 5 points")
     auto_estimate: bool = Field(default=True, description="Auto-estimate story points")
     auto_assign: bool = Field(default=True, description="Auto-assign to team member")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "prompt": "Create a user login feature with OAuth support for Google and GitHub",
+                "project_key": "PROJ",
+                "issue_type": "Story",
+                "priority": "High",
+                "auto_estimate": True,
+                "auto_breakdown": True,
+                "auto_assign": True
+            }
+        }
 
 
 class GeneratedStory(BaseModel):
@@ -77,6 +90,7 @@ class TeamMember(TeamMemberBase):
     current_story_points: int
     current_ticket_count: int
     availability_status: str
+    manual_capacity_override: bool = False
     performance_score: float
     average_completion_days: float
     quality_score: float
@@ -118,6 +132,7 @@ class UpdateMemberRequest(BaseModel):
     username: str
     skills: Optional[List[str]] = None
     max_story_points: Optional[int] = None
+    reset_capacity_to_auto: Optional[bool] = None  # Reset to auto-calculated capacity
     seniority_level: Optional[str] = None
     display_name: Optional[str] = None
     email: Optional[str] = None
@@ -128,10 +143,10 @@ class UpdateMemberRequest(BaseModel):
 
 class AssignmentRequest(BaseModel):
     """Request to assign a ticket"""
-    issue_key: str
-    priority: str
-    estimated_points: int
-    required_skills: List[str]
+    issue_key: str = Field(..., min_length=1, description="Jira issue key (e.g., PROJ-123)")
+    priority: str = Field(..., description="Highest, High, Medium, or Low")
+    estimated_points: int = Field(..., gt=0, le=21, description="Story points (1-21)")
+    required_skills: List[str] = Field(default=[], description="Required technical skills")
 
 
 class AssignmentCandidate(BaseModel):

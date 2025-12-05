@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     jira_api_token: str = ""
     jira_project_key: str = "PROJ"
     
+    # Jira Custom Fields (Story Points field IDs - try in order)
+    jira_story_points_field: str = "customfield_10016,customfield_10002,customfield_10026"
+    
+    @property
+    def jira_story_points_fields(self) -> List[str]:
+        """Parse story points field IDs from comma-separated string"""
+        if isinstance(self.jira_story_points_field, str):
+            return [field.strip() for field in self.jira_story_points_field.split(",")]
+        return [self.jira_story_points_field]
+    
     # Pinecone
     pinecone_api_key: str = ""
     pinecone_environment: str = ""
@@ -51,6 +61,13 @@ class Settings(BaseSettings):
     daily_working_hours: int = 8  # Standard work day
     hours_per_story_point: float = 4.0  # Hours needed per story point
     focus_factor: float = 0.7  # 70% focus factor (accounts for meetings, emails, etc.)
+    
+    # Capacity Multipliers by Seniority Level
+    capacity_multiplier_junior: float = 0.6  # 60% of base capacity
+    capacity_multiplier_mid: float = 1.0  # 100% of base capacity (baseline)
+    capacity_multiplier_senior: float = 1.2  # 120% of base capacity
+    capacity_multiplier_lead: float = 0.8  # 80% (more meetings/mentoring)
+    capacity_multiplier_principal: float = 0.7  # 70% (mostly architecture/mentoring)
     
     # Assignment
     max_assignment_attempts: int = 3

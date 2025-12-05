@@ -9,43 +9,68 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     gcc \
     g++ \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages in stages to avoid conflicts
+# Copy requirements file
+COPY requirements.txt .
+
+# Upgrade pip and install build tools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install core packages first
+# Install packages in stages to avoid conflicts
+# Install core dependencies first
 RUN pip install --no-cache-dir \
-    fastapi==0.100.0 \
-    uvicorn==0.23.0 \
-    python-multipart \
-    pydantic==1.10.13 \
-    python-dotenv
-
-# Install pydantic-settings separately
-RUN pip install --no-cache-dir pydantic-settings
-
-# Install other packages
-RUN pip install --no-cache-dir \
-    openai \
-    redis \
-    httpx \
-    loguru \
-    python-dateutil
+    fastapi==0.104.1 \
+    uvicorn[standard]==0.24.0 \
+    pydantic==2.5.0 \
+    pydantic-settings==2.1.0
 
 # Install database packages
 RUN pip install --no-cache-dir \
-    sqlalchemy \
-    psycopg2-binary
+    sqlalchemy==2.0.23 \
+    psycopg2-binary==2.9.9 \
+    alembic==1.12.1
 
-# Install Jira package (may need compilation)
-RUN pip install --no-cache-dir jira
+# Install Celery and Redis
+RUN pip install --no-cache-dir \
+    celery[redis]==5.3.4 \
+    redis==4.6.0 \
+    flower==2.0.1
+
+# Install remaining packages
+RUN pip install --no-cache-dir \
+    openai \
+    jira==3.8.0 \
+    httpx==0.25.2 \
+    aiohttp==3.9.1 \
+    python-multipart==0.0.6 \
+    python-dotenv==1.0.0 \
+    python-jose[cryptography]==3.3.0 \
+    passlib[bcrypt]==1.7.4 \
+    python-dateutil==2.8.2 \
+    loguru==0.7.2
+
+# Install chromadb with NumPy constraint
+RUN pip install --no-cache-dir "numpy<2.0.0" chromadb==0.4.22
+
+# Install AI packages (Google Gemini)
+RUN pip install --no-cache-dir google-generativeai
+
+# Install CrewAI and LangChain for multi-agent orchestration
+RUN pip install --no-cache-dir \
+    litellm \
+    langchain \
+    langchain-openai \
+    langchain-google-genai \
+    crewai
 
 # Copy application code
 COPY ./app /app/app
+COPY ./celery_app.py /app/celery_app.py
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
+# Run the application (default, can be overridden in docker-compose)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

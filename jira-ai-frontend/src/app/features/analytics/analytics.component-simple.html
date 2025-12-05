@@ -149,40 +149,10 @@
         <div class="card activity-card">
           <div class="card-header">
             <h3><i class="fas fa-history"></i> Recent Activity</h3>
-            <button class="btn-icon" (click)="refreshActivity()" title="Refresh activity feed">
-              <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshingActivity"></i>
-            </button>
           </div>
           <div class="card-body">
-            <div class="activity-filters">
-              <button 
-                class="filter-btn" 
-                [class.active]="activityFilter === 'all'"
-                (click)="filterActivity('all')">
-                All
-              </button>
-              <button 
-                class="filter-btn" 
-                [class.active]="activityFilter === 'assignments'"
-                (click)="filterActivity('assignments')">
-                <i class="fas fa-user-check"></i> Assignments
-              </button>
-              <button 
-                class="filter-btn" 
-                [class.active]="activityFilter === 'stories'"
-                (click)="filterActivity('stories')">
-                <i class="fas fa-plus-circle"></i> Stories
-              </button>
-              <button 
-                class="filter-btn" 
-                [class.active]="activityFilter === 'changes'"
-                (click)="filterActivity('changes')">
-                <i class="fas fa-edit"></i> Changes
-              </button>
-            </div>
-            
-            <div class="activity-list" *ngIf="filteredActivity.length > 0">
-              <div class="activity-item" *ngFor="let activity of filteredActivity" [attr.data-type]="activity.type">
+            <div class="activity-list" *ngIf="recentActivity.length > 0">
+              <div class="activity-item" *ngFor="let activity of recentActivity">
                 <div class="activity-icon" [ngClass]="'icon-' + (activity.color || 'blue')">
                   <i class="fas" [ngClass]="activity.icon || 'fa-circle'"></i>
                 </div>
@@ -191,22 +161,14 @@
                   <p>{{ activity.description }}</p>
                   <div class="activity-meta">
                     <span class="user"><i class="fas fa-user"></i> {{ activity.user }}</span>
-                    <span class="time"><i class="fas fa-clock"></i> {{ formatActivityTime(activity.timestamp) }}</span>
-                    <span class="type-badge" [ngClass]="'type-' + activity.type">{{ getActivityTypeLabel(activity.type) }}</span>
+                    <span class="time"><i class="fas fa-clock"></i> {{ activity.timestamp | date:'short' }}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="empty-state" *ngIf="filteredActivity.length === 0 && !isRefreshingActivity">
+            <div class="empty-state" *ngIf="recentActivity.length === 0">
               <i class="fas fa-history"></i>
-              <p>No {{ activityFilter === 'all' ? '' : activityFilter }} activity found</p>
-              <button class="btn btn-secondary" (click)="refreshActivity()">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-            </div>
-            <div class="loading-state-small" *ngIf="isRefreshingActivity">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Loading activity...</p>
+              <p>No recent activity</p>
             </div>
           </div>
         </div>

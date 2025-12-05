@@ -579,3 +579,33 @@
     }
   }
 }
+
+// Required field indicator
+.required {
+  color: var(--error-color, #ef4444);
+  margin-left: 0.25rem;
+  font-weight: bold;
+}
+
+// Error state for inputs
+.form-input.error {
+  border-color: var(--error-color, #ef4444);
+  
+  &:focus {
+    border-color: var(--error-color, #ef4444);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.input-help.error {
+  color: var(--error-color, #ef4444);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  i {
+    font-size: 0.875rem;
+  }
+}

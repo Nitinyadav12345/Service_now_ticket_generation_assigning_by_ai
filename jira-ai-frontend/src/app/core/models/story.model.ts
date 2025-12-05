@@ -25,9 +25,9 @@ export interface Story {
 
 export interface StoryRequest {
   prompt: string;
+  projectKey: string;  // Required
   issueType: IssueType;
   priority: Priority;
-  projectKey?: string;
   epicKey?: string;
   labels?: string[];
   autoEstimate: boolean;

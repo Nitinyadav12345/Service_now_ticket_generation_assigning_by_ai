@@ -68,11 +68,11 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
 
   private initForm(): void {
     this.storyForm = this.fb.group({
-      prompt: ['', [Validators.required, Validators.minLength(10)]],
-      issueType: ['Story'],
-      priority: ['Medium'],
-      projectKey: [''],
-      epicKey: [''],
+      prompt: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
+      issueType: ['Story', Validators.required],
+      priority: ['Medium', Validators.required],
+      projectKey: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(50)]],
+      epicKey: ['', Validators.maxLength(50)],
       labels: [''],
       autoEstimate: [true],
       autoBreakdown: [true],
@@ -86,7 +86,13 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
 
   async onSubmit(): Promise<void> {
     if (this.storyForm.invalid) {
-      this.notificationService.error('Please enter a valid prompt (at least 10 characters)');
+      if (this.storyForm.get('prompt')?.invalid) {
+        this.notificationService.error('Please enter a valid prompt (10-2000 characters)');
+      } else if (this.storyForm.get('projectKey')?.invalid) {
+        this.notificationService.error('Project Key is required');
+      } else {
+        this.notificationService.error('Please fill in all required fields');
+      }
       return;
     }
 
@@ -95,11 +101,11 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
     const formValue = this.storyForm.value;
     const request: StoryRequest = {
       prompt: formValue.prompt,
+      projectKey: formValue.projectKey,
       issueType: formValue.issueType,
       priority: formValue.priority,
-      projectKey: formValue.projectKey || undefined,
       epicKey: formValue.epicKey || undefined,
-      labels: formValue.labels ? formValue.labels.split(',').map((l: string) => l.trim()) : undefined,
+      labels: formValue.labels ? formValue.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l) : undefined,
       autoEstimate: formValue.autoEstimate,
       autoBreakdown: formValue.autoBreakdown,
       autoAssign: formValue.autoAssign
@@ -165,6 +171,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
     this.storyForm.reset({
       issueType: 'Story',
       priority: 'Medium',
+      projectKey: '',
       autoEstimate: true,
       autoBreakdown: true,
       autoAssign: true
@@ -179,5 +186,9 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
 
   get promptControl() {
     return this.storyForm.get('prompt');
+  }
+
+  get projectKeyControl() {
+    return this.storyForm.get('projectKey');
   }
 }
