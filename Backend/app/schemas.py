@@ -11,7 +11,7 @@ class StoryCreateRequest(BaseModel):
     project_key: str = Field(..., min_length=1, max_length=50, description="Jira project key (required)")
     issue_type: str = Field(default="Story", description="Story, Task, or Bug")
     priority: str = Field(default="Medium", description="Highest, High, Medium, or Low")
-    epic_key: Optional[str] = Field(None, max_length=50, description="Epic key to link to")
+    sprint_id: Optional[int] = Field(None, description="Sprint ID to add ticket to (if not provided, uses active sprint)")
     labels: Optional[List[str]] = Field(None, description="Labels to add to ticket")
     auto_breakdown: bool = Field(default=True, description="Auto-break into subtasks if > 5 points")
     auto_estimate: bool = Field(default=True, description="Auto-estimate story points")

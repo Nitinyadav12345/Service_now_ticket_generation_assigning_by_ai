@@ -28,7 +28,7 @@ export interface StoryRequest {
   projectKey: string;  // Required
   issueType: IssueType;
   priority: Priority;
-  epicKey?: string;
+  sprintId?: number;  // Optional - if not provided, uses active sprint
   labels?: string[];
   autoEstimate: boolean;
   autoBreakdown: boolean;

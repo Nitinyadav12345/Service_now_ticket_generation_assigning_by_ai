@@ -91,7 +91,8 @@ class AssignmentHistory(Base):
     __tablename__ = "assignment_history"
     
     id = Column(Integer, primary_key=True, index=True)
-    issue_key = Column(String(50), ForeignKey("story_requests.jira_issue_key"), nullable=False, index=True)
+    # Make foreign key nullable to support subtasks that don't have story_requests entries
+    issue_key = Column(String(50), ForeignKey("story_requests.jira_issue_key", ondelete="SET NULL"), nullable=True, index=True)
     assignee = Column(String(100), ForeignKey("team_members.username"), nullable=False, index=True)
     assignment_score = Column(Float)  # Score used for assignment decision
     assignment_reason = Column(Text)  # Explanation of why assigned

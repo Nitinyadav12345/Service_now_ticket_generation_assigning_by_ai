@@ -26,7 +26,7 @@ class StoryService:
             issue_type=request.issue_type,
             priority=request.priority,
             project_key=request.project_key,
-            epic_key=request.epic_key,
+            epic_key=None,  # Removed epic_key, using sprint_id instead
             labels=request.labels,
             status="pending"
         )
@@ -86,7 +86,7 @@ class StoryService:
                 priority=request.priority,
                 story_points=story_request.estimated_points,
                 labels=request.labels,
-                epic_key=request.epic_key
+                epic_key=None  # Removed epic support, using sprint_id instead
             )
             
             story_request.jira_issue_key = jira_issue.key
@@ -94,6 +94,7 @@ class StoryService:
             
             # Step 4: Break down into subtasks (if enabled and points > 5)
             subtasks = []
+            created_subtask_keys = []
             if request.auto_breakdown and story_request.estimated_points and story_request.estimated_points > 5:
                 logger.info(f"Breaking down story {jira_issue.key} into subtasks (estimated points: {story_request.estimated_points})")
                 try:
@@ -109,17 +110,23 @@ class StoryService:
                     for idx, subtask in enumerate(subtasks, 1):
                         try:
                             logger.info(f"Creating subtask {idx}/{len(subtasks)}: {subtask.get('title', 'N/A')}")
-                            self.jira_service.create_subtask(
+                            subtask_issue = self.jira_service.create_subtask(
                                 parent_key=jira_issue.key,
                                 summary=subtask["title"],
                                 description=subtask.get("description", ""),
                                 story_points=subtask.get("points")
                             )
+                            if subtask_issue:
+                                created_subtask_keys.append({
+                                    "key": subtask_issue.key,
+                                    "points": subtask.get("points", 1),
+                                    "category": subtask.get("category", "General")
+                                })
                         except Exception as e:
                             logger.error(f"Failed to create subtask {idx}: {e}")
                             # Continue with other subtasks
                     
-                    logger.info(f"Successfully created {len(subtasks)} subtasks for {jira_issue.key}")
+                    logger.info(f"Successfully created {len(created_subtask_keys)} subtasks for {jira_issue.key}")
                 except Exception as e:
                     logger.error(f"Error during story breakdown: {e}", exc_info=True)
                     # Continue with assignment even if breakdown fails
@@ -152,6 +159,17 @@ class StoryService:
                     try:
                         self.jira_service.assign_issue(jira_issue.key, assignee_username)
                         logger.info(f"Successfully assigned {jira_issue.key} to {assignee_display}")
+                        
+                        # Add to sprint (uses provided sprint_id or active sprint if not provided)
+                        sprint_added = self.jira_service.add_issue_to_sprint(
+                            jira_issue.key, 
+                            sprint_id=request.sprint_id
+                        )
+                        if sprint_added:
+                            sprint_msg = f"sprint {request.sprint_id}" if request.sprint_id else "active sprint"
+                            logger.info(f"Added {jira_issue.key} to {sprint_msg}")
+                        else:
+                            logger.warning(f"Could not add {jira_issue.key} to sprint (no active sprint or API error)")
                     except Exception as e:
                         logger.error(f"Failed to assign in Jira: {e}")
                         # Continue even if assignment fails
@@ -159,6 +177,35 @@ class StoryService:
                     self.db.commit()
                 else:
                     logger.warning(f"No suitable assignee found for {jira_issue.key}, added to queue")
+                
+                # Step 5b: Assign subtasks (if any were created)
+                if created_subtask_keys and request.auto_assign:
+                    logger.info(f"Assigning {len(created_subtask_keys)} subtasks for {jira_issue.key}")
+                    for subtask_info in created_subtask_keys:
+                        try:
+                            subtask_key = subtask_info["key"]
+                            subtask_points = subtask_info["points"]
+                            
+                            # Assign subtask
+                            subtask_assignment = await self.assignment_service.assign_ticket(
+                                issue_key=subtask_key,
+                                priority=request.priority,
+                                estimated_points=subtask_points,
+                                required_skills=story_request.required_skills or []
+                            )
+                            
+                            if subtask_assignment:
+                                subtask_assignee = subtask_assignment["assigned_to"]
+                                self.jira_service.assign_issue(subtask_key, subtask_assignee)
+                                logger.info(f"Assigned subtask {subtask_key} to {subtask_assignee}")
+                                
+                                # Add subtask to sprint (same sprint as parent)
+                                self.jira_service.add_issue_to_sprint(subtask_key, sprint_id=request.sprint_id)
+                            else:
+                                logger.warning(f"No assignee found for subtask {subtask_key}")
+                        except Exception as e:
+                            logger.error(f"Failed to assign subtask {subtask_key}: {e}")
+                            # Continue with other subtasks
             
             # Mark as completed
             story_request.status = "completed"

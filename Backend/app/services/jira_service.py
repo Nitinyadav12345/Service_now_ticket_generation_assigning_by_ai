@@ -471,6 +471,49 @@ class JiraService:
             logger.error(f"Error getting active sprint: {e}")
             return None
     
+    def add_issue_to_sprint(self, issue_key: str, sprint_id: Optional[int] = None) -> bool:
+        """
+        Add an issue to a sprint (defaults to active sprint if sprint_id not provided)
+        
+        Args:
+            issue_key: Jira issue key (e.g., SCRUM-123)
+            sprint_id: Sprint ID (if None, uses active sprint)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.jira:
+            logger.warning("Jira client not initialized")
+            return False
+        
+        try:
+            # Get active sprint if not provided
+            if not sprint_id:
+                active_sprint = self.get_active_sprint()
+                if not active_sprint:
+                    logger.warning(f"No active sprint found, cannot add {issue_key} to sprint")
+                    return False
+                sprint_id = active_sprint["id"]
+            
+            # Add issue to sprint using Jira API
+            # The Jira library doesn't have a direct method, so we use the REST API
+            url = f"{self.jira._options['server']}/rest/agile/1.0/sprint/{sprint_id}/issue"
+            headers = {"Content-Type": "application/json"}
+            data = {"issues": [issue_key]}
+            
+            response = self.jira._session.post(url, json=data, headers=headers)
+            
+            if response.status_code in [200, 204]:
+                logger.info(f"Successfully added {issue_key} to sprint {sprint_id}")
+                return True
+            else:
+                logger.error(f"Failed to add {issue_key} to sprint: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error adding {issue_key} to sprint: {e}")
+            return False
+    
     def get_user_velocity(self, username: str, sprint_count: int = 3) -> float:
         """Calculate user's average velocity from completed sprints"""
         if not self.jira:

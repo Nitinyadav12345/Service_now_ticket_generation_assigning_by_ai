@@ -72,7 +72,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
       issueType: ['Story', Validators.required],
       priority: ['Medium', Validators.required],
       projectKey: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(50)]],
-      epicKey: ['', Validators.maxLength(50)],
+      sprintId: [''], // Optional - if empty, will use active sprint
       labels: [''],
       autoEstimate: [true],
       autoBreakdown: [true],
@@ -104,7 +104,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
       projectKey: formValue.projectKey,
       issueType: formValue.issueType,
       priority: formValue.priority,
-      epicKey: formValue.epicKey || undefined,
+      sprintId: formValue.sprintId ? parseInt(formValue.sprintId, 10) : undefined, // Optional - if not provided, uses active sprint
       labels: formValue.labels ? formValue.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l) : undefined,
       autoEstimate: formValue.autoEstimate,
       autoBreakdown: formValue.autoBreakdown,
