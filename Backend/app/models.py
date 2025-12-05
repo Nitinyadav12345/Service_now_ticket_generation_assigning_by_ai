@@ -91,20 +91,20 @@ class AssignmentHistory(Base):
     __tablename__ = "assignment_history"
     
     id = Column(Integer, primary_key=True, index=True)
-    # Make foreign key nullable to support subtasks that don't have story_requests entries
+    # All fields nullable for maximum flexibility - supports both stories and subtasks
     issue_key = Column(String(50), ForeignKey("story_requests.jira_issue_key", ondelete="SET NULL"), nullable=True, index=True)
-    assignee = Column(String(100), ForeignKey("team_members.username"), nullable=False, index=True)
-    assignment_score = Column(Float)  # Score used for assignment decision
-    assignment_reason = Column(Text)  # Explanation of why assigned
-    bandwidth_score = Column(Float)
-    skills_score = Column(Float)
-    priority_score = Column(Float)
-    performance_score = Column(Float)
-    was_reassigned = Column(Boolean, default=False)
-    reassignment_reason = Column(Text)
-    completion_time_days = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime)
+    assignee = Column(String(100), ForeignKey("team_members.username", ondelete="SET NULL"), nullable=True, index=True)
+    assignment_score = Column(Float, nullable=True)
+    assignment_reason = Column(Text, nullable=True)
+    bandwidth_score = Column(Float, nullable=True)
+    skills_score = Column(Float, nullable=True)
+    priority_score = Column(Float, nullable=True)
+    performance_score = Column(Float, nullable=True)
+    was_reassigned = Column(Boolean, default=False, nullable=True)
+    reassignment_reason = Column(Text, nullable=True)
+    completion_time_days = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
     
     # Relationships
     story_request = relationship("StoryRequest", back_populates="assignment_history")
