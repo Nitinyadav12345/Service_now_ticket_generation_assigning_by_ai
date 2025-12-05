@@ -39,6 +39,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
   
   priorities: Priority[] = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
   issueTypes: IssueType[] = ['Story', 'Task', 'Bug'];
+  projectKeys: string[] = ['SCRUM']; // Add more project keys as needed
   
   examplePrompts = [
     'Create user authentication with email, password, and Google OAuth',
@@ -71,7 +72,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
       prompt: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
       issueType: ['Story', Validators.required],
       priority: ['Medium', Validators.required],
-      projectKey: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(50)]],
+      projectKey: ['SCRUM', [Validators.required, Validators.minLength(1), Validators.maxLength(50)]], // Default to SCRUM
       sprintId: [''], // Optional - if empty, will use active sprint
       labels: [''],
       autoEstimate: [true],
@@ -171,7 +172,7 @@ export class StoryCreatorComponent implements OnInit, OnDestroy {
     this.storyForm.reset({
       issueType: 'Story',
       priority: 'Medium',
-      projectKey: '',
+      projectKey: 'SCRUM',
       autoEstimate: true,
       autoBreakdown: true,
       autoAssign: true
