@@ -32,12 +32,7 @@ class StoryRequest(Base):
     
     # Relationships
     feedback_estimations = relationship("FeedbackEstimation", back_populates="story_request")
-    assignment_history = relationship(
-        "AssignmentHistory", 
-        back_populates="story_request",
-        primaryjoin="StoryRequest.jira_issue_key == foreign(AssignmentHistory.issue_key)",
-        viewonly=True  # Make it read-only since there's no FK constraint
-    )
+    # Removed assignment_history relationship - query directly by issue_key when needed
 
 
 class TeamMember(Base):
@@ -112,12 +107,7 @@ class AssignmentHistory(Base):
     completed_at = Column(DateTime, nullable=True)
     
     # Relationships
-    story_request = relationship(
-        "StoryRequest", 
-        back_populates="assignment_history",
-        primaryjoin="AssignmentHistory.issue_key == foreign(StoryRequest.jira_issue_key)",
-        viewonly=True  # Make it read-only since there's no FK constraint
-    )
+    # Removed story_request relationship - query directly by issue_key when needed
     team_member = relationship("TeamMember", back_populates="assignment_history")
 
 
